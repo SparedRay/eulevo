@@ -11,14 +11,20 @@ Built to be usable by older relatives: one column, big text, big buttons labelle
 
 ## Status
 
-| Phase | What | State |
+All screens are built. Everything has been clicked through in mock mode (`npm run dev:mock`); **none of it has been tested against a real Supabase project yet.**
+
+| Area | What | State |
 |---|---|---|
-| 1 | Project setup, database schema, security rules | ✅ done |
-| 3 | Guest flow: list → confirm → thank you / "someone was faster" → what I'm bringing | ✅ first version |
-| 2 | Host: sign in, create list | ✅ first version |
-| 2 | Host: add/edit gifts with photos, share link (copy / WhatsApp / QR) | ⏳ next |
-| 4 | Host: who's bringing what, free a gift up, location cleanup job | ⏳ |
-| 5 | Polish, PWA | ⏳ |
+| Setup | Database schema, security rules, database functions | ✅ done |
+| Setup | Mock mode: every screen without Supabase | ✅ done |
+| Guests | List → confirm → thank you / "someone was faster" → what I'm bringing, release, add to calendar | ✅ first version |
+| Hosts | Sign in by email link (Google button appears only if the provider is on), create a list | ✅ first version |
+| Hosts | Add / edit / remove gifts with photos; share link (copy / WhatsApp / QR) | ✅ first version |
+| Hosts | Who's bringing what, free a gift up ("Liberar") | ✅ first version |
+| Hosts | Edit party name, date, time and address; invite a co-host by link | ✅ first version |
+| Launch | Supabase settings + second migration, then a full test with real data | ⏳ next |
+| Privacy | Daily job that deletes guest locations 7 days after the party (`pg_cron`) | ⏳ not scheduled |
+| Later | Install as an app (PWA), polish | ⏳ |
 
 ## Run it locally
 
@@ -38,7 +44,7 @@ npm run dev:mock             # no Supabase needed: demo list at /l/demo, host sc
 1. Create a free project at <https://supabase.com/dashboard> (region: São Paulo).
 2. **Database:** open *SQL Editor* and run each file in `supabase/migrations/` in name order (first `20260927000000_init.sql`, then `20260927120000_cohost_invites.sql`).
    (Or with the CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`.)
-3. **Guests without accounts:** *Authentication → Sign In / Providers →* turn on **Allow anonymous sign-ins**.
+3. **Guests without accounts:** *Authentication → Sign In / Providers →* turn on **Allow anonymous sign-ins** and **Allow new users to sign up**. Both are needed: every guest's anonymous session counts as a new sign-up, and so does a host's or co-host's first email sign-in.
 4. **Host sign-in:**
    - Email links work out of the box (*Email* provider).
    - Google (optional): create an OAuth client in Google Cloud Console, then paste its ID and secret under *Providers → Google*.
@@ -47,7 +53,7 @@ npm run dev:mock             # no Supabase needed: demo list at /l/demo, host sc
    - Site URL: your Cloudflare address (see step 2 below)
    - Additional redirect URLs: `http://localhost:5173/**` and `https://<your Cloudflare address>/**`
 6. **Keys:** *Project Settings → API* → copy the Project URL and the anon/publishable key into `.env.local`.
-7. *(Optional, privacy)* *Database → Extensions →* enable `pg_cron`, then run the `cron.schedule(...)` line at the bottom of the migration. It wipes guest locations 7 days after the party.
+7. **Privacy cleanup:** *Database → Extensions →* enable `pg_cron`, then run the `cron.schedule(...)` line at the bottom of `20260927000000_init.sql`. It wipes guest locations 7 days after the party, which the hosts' *Quem vai levar o quê* screen promises.
 
 Free-tier note: Supabase pauses a free project after about a week with no activity. Open the dashboard and click *Restore* if that happens.
 
@@ -76,17 +82,20 @@ The repo deploys as a Cloudflare Worker that serves static files. `wrangler.json
 
 **Lost phone:** if a guest clears their browser, the app forgets what they claimed, but the claim stays. They ask the host, who can free the gift up.
 
-**Photos:** stored in the public bucket `gift-images` under `<list_id>/…`; only that list's hosts can upload.
+**Photos:** stored in the public bucket `gift-images` under `<list_id>/…`; only that list's hosts can upload. They are shrunk in the browser first (longest side 1200 px, WebP; JPEG on Safari).
+
+**Co-hosts:** the person who creates a list owns it. On *Festa e anfitriões* they can create a one-time invite link (valid 7 days) and send it to a partner, who signs in with their own email and becomes a co-host (`accept_invite(token)`). Co-hosts can do everything except invite or remove other hosts. No host can change who owns a list.
 
 ## Project layout
 
 ```
 supabase/migrations/   database schema, security rules and functions
-src/lib/               supabase client, API calls, date formatting (pt-BR), calendar (.ics), device helpers
+src/lib/               supabase client + sign-in, api.ts (every database call), mock.ts (demo data, dev only),
+                       photo shrinking, date formatting (pt-BR), calendar (.ics), clipboard, device helpers
 src/stores/guest.ts    guest state (list, my gifts, claim, release, auto-refresh every 20 s)
 src/styles/            Azulejo design tokens + base styles
-src/components/        TileBand (tile header), GiftPhoto (arch-framed photo)
+src/components/        TileBand, GiftPhoto, GiftForm, SharePanel (link / WhatsApp / QR), HostNav, PartyFields
 src/views/guest/       ListView, ConfirmView, DoneView, TakenView, MineView
-src/views/admin/       LoginView, ListsView, GiftsView*, ClaimsView*   (* placeholders)
+src/views/admin/       LoginView, ListsView, GiftsView, ClaimsView, SettingsView (party + co-hosts), InviteView
 docs/design.md         visual identity and UX rules
 ```

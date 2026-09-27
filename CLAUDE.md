@@ -67,7 +67,9 @@ docs/design.md         visual identity + UX rules — read before touching UI
 | Host gifts screen (add/edit gift, photo upload, share: copy / WhatsApp / QR) | ✅ first version, **untested against real data** |
 | Host "Quem vai levar o quê" (claims + "Liberar") | ✅ first version, **untested against real data** |
 | Edit party details, co-host invites (migration `20260927120000_cohost_invites.sql`) | ✅ first version, **untested against real data** |
-| pg_cron location purge, PWA, polish | ⏳ |
+| Host login: Google button hidden unless the provider is on | ✅ |
+| pg_cron location purge (ClaimsView promises it: schedule before launch) | ⏳ |
+| PWA, polish | ⏳ |
 
 ## Next steps (in order)
 
