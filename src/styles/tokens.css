@@ -1,0 +1,25 @@
+/* Azulejo identity — see docs/design.md */
+:root {
+  --paper: #faf8f3;
+  --ink: #14213d;
+  --cobalt: #1e4fa3;
+  --cobalt-dark: #143a7c;
+  --sky: #e3eaf6;
+  --sand: #f4e6c8;
+  --muted: #3a4660;
+  --line: #c9d3e6;
+  --input-line: #9aa4b8;
+  --available: #1e6b3a;
+  --white: #ffffff;
+
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'Atkinson Hyperlegible', system-ui, sans-serif;
+
+  --text-body: 18px;
+  --text-small: 16px;
+  --radius: 12px;
+  --radius-card: 18px;
+  --tap: 56px; /* minimum button height — older guests */
+  --gutter: 20px;
+  --max-width: 480px;
+}
