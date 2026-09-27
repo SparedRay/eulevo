@@ -75,7 +75,7 @@ docs/design.md         visual identity + UX rules — read before touching UI
 
 1. ~~Mock mode~~ ✅
 2. ~~Host gifts screen~~ ✅ (replaced or removed photos are deleted from Storage after the save; archived gifts keep theirs)
-3. ~~Host claims screen~~ ✅ (locations show `area_label` if set, else a "Ver no mapa" OpenStreetMap link; nothing fills `area_label` yet)
+3. ~~Host claims screen~~ ✅ (ClaimsView fills `area_label` via Nominatim reverse lookup, 1 request/s, from the host's browser; "Ver no mapa" link until then or if it fails)
 4. Supabase setup: run the migrations `20260927120000_cohost_invites.sql` and `20260927180000_host_tools.sql`; turn on "Allow new users to sign up" (off on 2026-09-27, which blocks anonymous guests and new host emails); redirect URLs include `http://localhost:5173/**`.
 5. Test everything against real data (walkthrough in the chat of 2026-09-27: host sign-in → gifts → two guest browsers → claims → Liberar → invite a co-host).
 

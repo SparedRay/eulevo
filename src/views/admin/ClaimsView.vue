@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Host · Who's bringing what: every active claim, newest first, with "Liberar" to free a gift up.
 // Design reference: canvas page "C·4 Azulejo — final flow" → "Host · Who's bringing what".
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
 import HostNav from '@/components/HostNav.vue'
@@ -9,7 +9,9 @@ import {
   fetchHostClaims,
   fetchHostGifts,
   fetchHostList,
+  lookupArea,
   releaseClaim,
+  saveAreaLabel,
   type HostClaim,
   type HostGift,
   type HostList,
@@ -59,7 +61,38 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(async () => {
+  await load()
+  fillAreas()
+})
+
+let leaving = false
+let filling = false
+onUnmounted(() => (leaving = true))
+
+/** Looks up "Perto de …" for shared locations that don't have it yet, one per second, and saves it. */
+async function fillAreas() {
+  if (filling) return
+  filling = true
+  try {
+    for (const c of claims.value) {
+      if (leaving) return
+      if (c.area_label || c.lat === null || c.lng === null) continue
+      try {
+        const label = await lookupArea(c.lat, c.lng)
+        if (label) {
+          c.area_label = label
+          await saveAreaLabel(c.id, label)
+        }
+      } catch (e) {
+        console.error(e) // keep the "Ver no mapa" link for this one
+      }
+      await new Promise((r) => setTimeout(r, 1100))
+    }
+  } finally {
+    filling = false
+  }
+}
 
 function when(iso: string) {
   const s = shortDateTime(iso)

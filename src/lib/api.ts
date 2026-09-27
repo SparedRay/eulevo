@@ -375,3 +375,27 @@ export async function deleteGiftPhotos(paths: string[]): Promise<void> {
   const { error } = await supabase.storage.from('gift-images').remove(stored)
   if (error) throw error
 }
+
+/**
+ * "Perto de Pinheiros, São Paulo" for a guest's rounded (~1 km) location, from OpenStreetMap's free Nominatim service.
+ * Called from the host's browser at most once per second (their usage policy). Null if nothing useful comes back.
+ */
+export async function lookupArea(lat: number, lng: number): Promise<string | null> {
+  if (MOCK) return (await mock()).lookupArea(lat, lng)
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=pt-BR&lat=${lat}&lon=${lng}`
+  const res = await fetch(url)
+  if (!res.ok) return null
+  const a = ((await res.json()) as { address?: Record<string, string> }).address ?? {}
+  const place = a.suburb ?? a.neighbourhood ?? a.quarter ?? a.city_district ?? a.town ?? a.village
+  const city = a.city ?? a.town
+  // "Perto de Pinheiros, São Paulo": the city tells apart every city's "Centro".
+  const parts = [place, city].filter((x, i, all) => x && all.indexOf(x) === i)
+  return parts.length ? `Perto de ${parts.join(', ')}` : null
+}
+
+/** Saves the looked-up neighbourhood so each claim is looked up only once. Wiped with the location after the party. */
+export async function saveAreaLabel(claimId: string, label: string): Promise<void> {
+  if (MOCK) return (await mock()).saveAreaLabel(claimId, label)
+  const { error } = await supabase.from('claims').update({ area_label: label }).eq('id', claimId)
+  if (error) throw error
+}

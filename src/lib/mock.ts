@@ -597,3 +597,16 @@ export function deleteList(listId: string): Promise<void> {
     keep(lists, (l) => l.id !== listId)
   })
 }
+
+/** Stands in for OpenStreetMap: a São Paulo neighbourhood picked from the coordinates. */
+export function lookupArea(lat: number, lng: number): Promise<string | null> {
+  const places = ['Pinheiros', 'Vila Mariana', 'Santana', 'Lapa', 'Tatuapé', 'Butantã']
+  return later(() => `Perto de ${places[Math.abs(Math.round((lat + lng) * 100)) % places.length]}, São Paulo`, 800)
+}
+
+export function saveAreaLabel(claimId: string, label: string): Promise<void> {
+  return later(() => {
+    const c = claims.find((x) => x.id === claimId)
+    if (c) c.area_label = label
+  })
+}
