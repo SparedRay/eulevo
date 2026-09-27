@@ -42,7 +42,7 @@ npm run dev:mock             # no Supabase needed: demo list at /l/demo, host sc
 ### 1. Supabase (database, login, photos)
 
 1. Create a free project at <https://supabase.com/dashboard> (region: São Paulo).
-2. **Database:** open *SQL Editor* and run each file in `supabase/migrations/` in name order (first `20260927000000_init.sql`, then `20260927120000_cohost_invites.sql`).
+2. **Database:** open *SQL Editor* and run each file in `supabase/migrations/` in name order (`20260927000000_init.sql`, `20260927120000_cohost_invites.sql`, `20260927180000_host_tools.sql`). Each later file only adds to the ones before it.
    (Or with the CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`.)
 3. **Guests without accounts:** *Authentication → Sign In / Providers →* turn on **Allow anonymous sign-ins** and **Allow new users to sign up**. Both are needed: every guest's anonymous session counts as a new sign-up, and so does a host's or co-host's first email sign-in.
 4. **Host sign-in:**
@@ -84,7 +84,7 @@ The repo deploys as a Cloudflare Worker that serves static files. `wrangler.json
 
 **Photos:** stored in the public bucket `gift-images` under `<list_id>/…`; only that list's hosts can upload. They are shrunk in the browser first (longest side 1200 px, WebP; JPEG on Safari).
 
-**Co-hosts:** the person who creates a list owns it. On *Festa e anfitriões* they can create a one-time invite link (valid 7 days) and send it to a partner, who signs in with their own email and becomes a co-host (`accept_invite(token)`). Co-hosts can do everything except invite or remove other hosts. No host can change who owns a list.
+**Co-hosts:** the person who creates a list owns it. On *Festa e anfitriões* they can create a one-time invite link (valid 7 days) and send it to a partner, who signs in with their own email and becomes a co-host (`accept_invite(token)`). Co-hosts can do everything except invite or remove other hosts, and can leave a list on their own. The owner can hand the list over to a co-host (`transfer_ownership`) or delete it with its photos; nobody can change the owner any other way.
 
 ## Project layout
 

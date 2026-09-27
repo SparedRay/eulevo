@@ -58,7 +58,7 @@ onMounted(accept)
         <template v-else-if="result.status === 'expired'">Ele venceu: os convites valem 7 dias. </template>
         <template v-else-if="result.status === 'not_found'">Confira se o link está completo. </template>
         <template v-else>Entre com seu e-mail, não como convidado. </template>
-        Peça um convite novo para quem criou a lista.
+        Peça um convite novo para a pessoa responsável pela lista.
       </p>
       <div class="stack push-bottom">
         <RouterLink class="btn btn--outline" :to="{ name: 'admin-lists' }">Ver suas listas</RouterLink>

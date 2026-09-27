@@ -1,20 +1,24 @@
 <script setup lang="ts">
 // Host · Party details and co-hosts: edit name / date / time / address, see who manages the list,
-// and (owner only) invite a partner with a one-time link or remove a co-host.
+// and (owner only) invite a partner with a one-time link, remove a co-host, hand the list over or delete it.
+// Co-hosts can leave.
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
 import HostNav from '@/components/HostNav.vue'
 import PartyFields, { type PartyForm } from '@/components/PartyFields.vue'
 import {
   cancelInvite,
   createInvite,
+  deleteList,
   fetchHostGifts,
   fetchHostList,
   fetchListHosts,
   fetchOpenInvites,
   inviteUrl,
+  leaveList,
   removeCoHost,
+  transferOwnership,
   updateList,
   type HostGift,
   type HostList,
@@ -25,6 +29,7 @@ import { fromDateTimeInputs, partyDay, toDateInput, toTimeInput } from '@/lib/fo
 import { copyText } from '@/lib/clipboard'
 
 const route = useRoute()
+const router = useRouter()
 const listId = route.params.id as string
 
 const list = ref<HostList | null>(null)
@@ -44,8 +49,8 @@ watch(form, () => (partySaved.value = false), { deep: true })
 const busy = ref(false)
 const hostsError = ref<string | null>(null)
 const hostsDone = ref<string | null>(null)
-/** Co-host waiting for "Tem certeza?" before removal. */
-const confirmingRemove = ref<string | null>(null)
+/** Action waiting for "Tem certeza?": `remove:<user>`, `transfer:<user>`, `leave` or `delete`. */
+const confirming = ref<string | null>(null)
 /** Invite whose link was just copied. */
 const copiedToken = ref<string | null>(null)
 
@@ -126,7 +131,7 @@ async function hostAction(action: () => Promise<unknown>, done: string) {
   hostsDone.value = null
   try {
     await action()
-    confirmingRemove.value = null
+    confirming.value = null
     await load()
     hostsDone.value = done
   } catch (e) {
@@ -141,6 +146,26 @@ const newInvite = () => hostAction(() => createInvite(listId), 'Convite criado. 
 const dropInvite = (token: string) => hostAction(() => cancelInvite(token), 'Convite cancelado. O link não funciona mais.')
 const remove = (h: ListHost) =>
   hostAction(() => removeCoHost(listId, h.user_id), `${h.email} não cuida mais desta lista.`)
+const transfer = (h: ListHost) =>
+  hostAction(async () => {
+    if (!(await transferOwnership(listId, h.user_id))) throw new Error('transfer refused')
+  }, `Pronto: agora ${h.email} é a pessoa responsável pela lista.`)
+
+/** Leaving or deleting ends access to the list, so these go back to "Suas listas". */
+async function leaveOrDelete(action: () => Promise<void>, failure: string) {
+  busy.value = true
+  hostsError.value = null
+  try {
+    await action()
+    router.replace({ name: 'admin-lists' })
+  } catch (e) {
+    console.error(e)
+    hostsError.value = failure
+    busy.value = false
+  }
+}
+const leave = () => leaveOrDelete(() => leaveList(listId), 'Não conseguimos tirar você da lista. Confira sua internet e tente de novo.')
+const destroy = () => leaveOrDelete(() => deleteList(listId), 'Não conseguimos apagar a lista. Confira sua internet e tente de novo.')
 </script>
 
 <template>
@@ -195,24 +220,34 @@ const remove = (h: ListHost) =>
                 <span class="email">
                   <b>{{ h.email }}</b>
                   <span class="muted small">
-                    {{ [h.is_me ? 'você' : '', h.is_owner ? 'criou a lista' : 'co-anfitrião'].filter(Boolean).join(' · ') }}
+                    {{ [h.is_me ? 'você' : '', h.is_owner ? 'responsável pela lista' : 'co-anfitrião'].filter(Boolean).join(' · ') }}
                   </span>
                 </span>
-                <button
-                  v-if="amOwner && !h.is_owner && confirmingRemove !== h.user_id"
-                  class="btn btn--outline btn--auto"
-                  type="button"
-                  @click="confirmingRemove = h.user_id"
-                >
-                  Remover
-                </button>
               </div>
-              <div v-if="confirmingRemove === h.user_id" class="stack">
+              <div v-if="confirming === `remove:${h.user_id}`" class="stack">
                 <p><b>Tem certeza?</b> {{ h.email }} não vai mais poder mexer nesta lista.</p>
                 <button class="btn btn--primary" type="button" :disabled="busy" @click="remove(h)">Sim, remover</button>
-                <button class="btn btn--outline" type="button" :disabled="busy" @click="confirmingRemove = null">
+                <button class="btn btn--outline" type="button" :disabled="busy" @click="confirming = null">
                   Não, manter
                 </button>
+              </div>
+              <div v-else-if="confirming === `transfer:${h.user_id}`" class="stack">
+                <p>
+                  <b>Tem certeza?</b> {{ h.email }} passa a ser a pessoa responsável pela lista. Você continua cuidando
+                  dela, mas não vai mais poder convidar, remover anfitriões ou apagar a lista.
+                </p>
+                <button class="btn btn--primary" type="button" :disabled="busy" @click="transfer(h)">
+                  Sim, passar a lista
+                </button>
+                <button class="btn btn--outline" type="button" :disabled="busy" @click="confirming = null">
+                  Não, manter comigo
+                </button>
+              </div>
+              <div v-else-if="amOwner && !h.is_owner" class="host-actions">
+                <button class="btn btn--outline" type="button" @click="confirming = `transfer:${h.user_id}`">
+                  Passar a lista para esta pessoa
+                </button>
+                <button class="btn btn--outline" type="button" @click="confirming = `remove:${h.user_id}`">Remover</button>
               </div>
             </li>
           </ul>
@@ -253,10 +288,41 @@ const remove = (h: ListHost) =>
             </template>
           </template>
 
-          <p v-else class="note">
-            Só quem criou a lista<template v-if="owner"> ({{ owner.email }})</template> pode convidar ou remover
-            anfitriões.
+          <template v-else>
+            <p class="note">
+              Só a pessoa responsável pela lista<template v-if="owner"> ({{ owner.email }})</template> pode convidar ou
+              remover anfitriões.
+            </p>
+            <div v-if="confirming === 'leave'" class="stack">
+              <p>
+                <b>Tem certeza?</b> Você não vai mais ver esta lista. Para voltar, peça um convite novo para
+                <template v-if="owner">{{ owner.email }}</template><template v-else>a pessoa responsável</template>.
+              </p>
+              <button class="btn btn--primary" type="button" :disabled="busy" @click="leave">Sim, sair da lista</button>
+              <button class="btn btn--outline" type="button" :disabled="busy" @click="confirming = null">
+                Não, continuar
+              </button>
+            </div>
+            <button v-else class="btn btn--outline" type="button" @click="confirming = 'leave'">Sair desta lista</button>
+          </template>
+        </section>
+
+        <section v-if="amOwner" class="card danger" aria-labelledby="delete-title">
+          <h2 id="delete-title">Apagar a lista</h2>
+          <p class="muted">
+            Depois da festa, ou se a lista foi criada por engano. Apaga os presentes, as fotos e o que os convidados
+            escolheram. O link dos convidados para de funcionar.
           </p>
+          <div v-if="confirming === 'delete'" class="stack">
+            <p><b>Tem certeza?</b> A lista "{{ list.title }}" será apagada para sempre. Não dá para desfazer.</p>
+            <button class="btn btn--primary" type="button" :disabled="busy" @click="destroy">
+              {{ busy ? 'Apagando…' : 'Sim, apagar para sempre' }}
+            </button>
+            <button class="btn btn--outline" type="button" :disabled="busy" @click="confirming = null">
+              Não, manter a lista
+            </button>
+          </div>
+          <button v-else class="btn btn--outline" type="button" @click="confirming = 'delete'">Apagar esta lista</button>
         </section>
       </div>
     </template>
@@ -299,6 +365,18 @@ h3 {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+.host-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.host-actions .btn {
+  width: auto;
+  flex: 1 1 auto;
+}
+.danger {
+  border-style: dashed;
 }
 .email {
   display: flex;

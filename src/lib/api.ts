@@ -332,3 +332,35 @@ export async function acceptInvite(token: string): Promise<InviteResult> {
 }
 
 export const inviteUrl = (token: string) => `${window.location.origin}/admin/convite/${token}`
+
+/** A co-host removes themself from a list (the owner can't: they hand it over or delete it). */
+export async function leaveList(listId: string): Promise<void> {
+  if (MOCK) return (await mock()).leaveList(listId)
+  const { data } = await supabase.auth.getUser()
+  const { error } = await supabase.from('list_admins').delete().eq('list_id', listId).eq('user_id', data.user?.id ?? '')
+  if (error) throw error
+}
+
+/** The owner hands the list to one of its co-hosts and stays on as a co-host. */
+export async function transferOwnership(listId: string, userId: string): Promise<boolean> {
+  if (MOCK) return (await mock()).transferOwnership(listId, userId)
+  const { data, error } = await supabase.rpc('transfer_ownership', { p_list: listId, p_user: userId })
+  if (error) throw error
+  return data as boolean
+}
+
+/** Deletes the list's photos, then the list (gifts, claims, hosts and invites go with it). Owner only. */
+export async function deleteList(listId: string): Promise<void> {
+  if (MOCK) return (await mock()).deleteList(listId)
+  // Photos first: once the list is gone, nobody passes the storage policy for its folder any more.
+  const bucket = supabase.storage.from('gift-images')
+  for (;;) {
+    const { data: files, error } = await bucket.list(listId, { limit: 100 })
+    if (error) throw error
+    if (!files?.length) break
+    const { error: removeError } = await bucket.remove(files.map((f) => `${listId}/${f.name}`))
+    if (removeError) throw removeError
+  }
+  const { error } = await supabase.from('lists').delete().eq('id', listId)
+  if (error) throw error
+}

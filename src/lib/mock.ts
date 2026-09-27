@@ -567,3 +567,33 @@ export function acceptInvite(token: string): Promise<InviteResult> {
     return { status: 'ok', list_id: i.list_id, title }
   }, 500)
 }
+
+export function leaveList(listId: string): Promise<void> {
+  return later(() => {
+    if (isOwner(listId)) throw new Error('the owner stays a host')
+    const i = admins.findIndex((a) => a.list_id === listId && a.user_id === HOST_ME)
+    if (i >= 0) admins.splice(i, 1)
+  })
+}
+
+export function transferOwnership(listId: string, userId: string): Promise<boolean> {
+  return later(() => {
+    const l = lists.find((x) => x.id === listId)
+    if (!l || l.owner_id !== HOST_ME || !isAdmin(listId, userId)) return false
+    l.owner_id = userId
+    return true
+  })
+}
+
+export function deleteList(listId: string): Promise<void> {
+  return later(() => {
+    if (!isOwner(listId)) throw new Error('only the owner deletes a list')
+    const giftIds = new Set(gifts.filter((g) => g.list_id === listId).map((g) => g.id))
+    const keep = <T>(arr: T[], ok: (x: T) => boolean) => arr.splice(0, arr.length, ...arr.filter(ok))
+    keep(claims, (c) => !giftIds.has(c.gift_id))
+    keep(gifts, (g) => g.list_id !== listId)
+    keep(admins, (a) => a.list_id !== listId)
+    keep(invites, (i) => i.list_id !== listId)
+    keep(lists, (l) => l.id !== listId)
+  })
+}
