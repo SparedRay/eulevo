@@ -25,12 +25,12 @@ Vue 3 (`<script setup lang="ts">`), Vite, TypeScript strict, Pinia (setup stores
 ```
 supabase/migrations/   schema + RLS + functions (source of truth for the DB)
 src/config.ts          APP_NAME
-src/lib/               supabase client + auth helpers, api.ts (typed wrappers for every Supabase call), mock.ts (dev-only demo data), format.ts (pt-BR dates), calendar.ts (.ics), device.ts
+src/lib/               supabase client + auth helpers, api.ts (typed wrappers for every Supabase call), mock.ts (dev-only demo data), image.ts (shrink photos before upload), format.ts (pt-BR dates), calendar.ts (.ics), device.ts
 src/stores/guest.ts    guest state: load, 20 s auto-refresh, claim, release
 src/styles/            tokens.css (Azulejo palette) + base.css (.page .btn .card .strip .note .field .check …)
-src/components/        TileBand, GiftPhoto
+src/components/        TileBand, GiftPhoto, GiftForm (add/edit gift), SharePanel (copy / WhatsApp / QR via `uqr`)
 src/views/guest/       ListView → ConfirmView → DoneView | TakenView, MineView
-src/views/admin/       LoginView, ListsView (create list), GiftsView (stub), ClaimsView (stub)
+src/views/admin/       LoginView, ListsView (create list), GiftsView, ClaimsView (stub)
 docs/design.md         visual identity + UX rules — read before touching UI
 ```
 
@@ -64,14 +64,14 @@ docs/design.md         visual identity + UX rules — read before touching UI
 | Mock mode (`npm run dev:mock`) | ✅ |
 | Guest flow (list, confirm, done, taken, mine, release, .ics) | ✅ first version, **untested against real data** |
 | Host sign-in + create list | ✅ first version |
-| Host gifts screen (add/edit gift, photo upload, share: copy / WhatsApp / QR) | ⏳ next |
+| Host gifts screen (add/edit gift, photo upload, share: copy / WhatsApp / QR) | ✅ first version, **untested against real data** |
 | Host "Quem vai levar o quê" (claims + "Liberar") | ⏳ |
 | pg_cron location purge, PWA, polish | ⏳ |
 
 ## Next steps (in order)
 
 1. ~~Mock mode~~ ✅
-2. Host gifts screen (`GiftsView`): list of gifts with status in words, "Adicionar presente" form (photo, nome, descrição, link da loja, "Mais de um convidado pode levar?" Sim/Não → quantos), edit and archive, plus a share panel (copy link, `https://wa.me/?text=…`, QR code: use a small dependency or generate an SVG).
+2. ~~Host gifts screen~~ ✅ (removing or replacing a photo leaves the old file in Storage; clean up later if it matters)
 3. Host claims screen (`ClaimsView`).
 4. Supabase setup check: anonymous sign-ins enabled, redirect URLs include `http://localhost:5173/**`.
 

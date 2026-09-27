@@ -8,7 +8,7 @@
  * - "Panos de prato" is repeatable without a limit; "Taças de vinho" allows 2 people.
  * - "Toalhas de banho" gets taken by someone else the moment you confirm it, to show the "taken" screen.
  */
-import type { ClaimResult, GiftLink, GuestList, HostList, NewList } from './api'
+import type { ClaimResult, GiftInput, GiftLink, GuestList, HostGift, HostList, NewList } from './api'
 
 interface MockList extends HostList {
   theme: string
@@ -75,7 +75,8 @@ const lists: MockList[] = [
   },
 ]
 
-function gift(p: Partial<MockGift> & Pick<MockGift, 'id' | 'title'>, sort: number): MockGift {
+/** `order` only spaces out created_at so the demo gifts keep this order. */
+function gift(p: Partial<MockGift> & Pick<MockGift, 'id' | 'title'>, order: number): MockGift {
   return {
     list_id: 'list-demo',
     description: null,
@@ -85,9 +86,9 @@ function gift(p: Partial<MockGift> & Pick<MockGift, 'id' | 'title'>, sort: numbe
     repeatable: false,
     max_claims: null,
     archived: false,
-    created_at: minutesAgo(60 * 24 * 3 - sort),
+    created_at: minutesAgo(60 * 24 * 3 - order),
     ...p,
-    sort,
+    sort: 0, // like the real table: every gift is 0, so the order is by created_at
   }
 }
 
@@ -178,7 +179,8 @@ function later<T>(value: () => T, ms = 250): Promise<T> {
 }
 
 const activeClaims = (giftId: string) => claims.filter((c) => c.gift_id === giftId && !c.released_at)
-const copy = <T>(v: T): T => structuredClone(v)
+/** Deep copy through JSON, like a real network round trip. (structuredClone rejects Vue's reactive proxies.) */
+const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v))
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -311,5 +313,63 @@ export function createList(input: NewList): Promise<string> {
     const id = newId('list')
     lists.push({ ...input, id, share_token: newId('t'), theme: 'azulejo', created_at: new Date().toISOString() })
     return id
+  })
+}
+
+export function hostList(id: string): Promise<HostList | null> {
+  return later(() => {
+    const l = lists.find((x) => x.id === id)
+    return l ? copy({ id: l.id, title: l.title, event_at: l.event_at, address: l.address, share_token: l.share_token }) : null
+  })
+}
+
+export function hostGifts(listId: string): Promise<HostGift[]> {
+  return later(() =>
+    copy(
+      gifts
+        .filter((g) => g.list_id === listId)
+        .sort((a, b) => a.sort - b.sort || a.created_at.localeCompare(b.created_at))
+        .map((g) => ({ ...g, claim_count: activeClaims(g.id).length })),
+    ),
+  )
+}
+
+export function createGift(listId: string, input: GiftInput): Promise<void> {
+  return later(() => {
+    gifts.push({
+      ...copy(input),
+      id: newId('g'),
+      list_id: listId,
+      room: null,
+      sort: 0,
+      archived: false,
+      created_at: new Date().toISOString(),
+    })
+  })
+}
+
+export function updateGift(id: string, input: GiftInput): Promise<void> {
+  return later(() => {
+    const g = gifts.find((x) => x.id === id)
+    if (!g) throw new Error('gift not found')
+    Object.assign(g, copy(input))
+  })
+}
+
+export function setGiftArchived(id: string, archived: boolean): Promise<void> {
+  return later(() => {
+    const g = gifts.find((x) => x.id === id)
+    if (!g) throw new Error('gift not found')
+    g.archived = archived
+  })
+}
+
+/** Keeps the photo in memory as a data URL; imageUrl() passes data URLs through. */
+export function uploadGiftPhoto(photo: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => setTimeout(() => resolve(reader.result as string), 400)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(photo)
   })
 }
