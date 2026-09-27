@@ -77,8 +77,12 @@ export const useGuestStore = defineStore('guest', () => {
     setTimeout(syncLive)
   }
 
-  async function claim(giftId: string, shareLocation: boolean): Promise<ClaimResult> {
-    const loc = shareLocation ? await roughLocation() : null
+  /**
+   * Claims a gift. The rough location (~1 km) is always requested: the browser's own
+   * permission prompt is the guest's choice, and a "no" or no answer still saves the claim.
+   */
+  async function claim(giftId: string): Promise<ClaimResult> {
+    const loc = await roughLocation()
     const result = await claimGift(giftId, {
       lat: loc?.lat,
       lng: loc?.lng,

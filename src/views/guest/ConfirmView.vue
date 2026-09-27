@@ -12,7 +12,6 @@ const store = useGuestStore()
 const token = route.params.token as string
 const giftId = route.params.giftId as string
 
-const shareLocation = ref(false)
 const saving = ref(false)
 const failed = ref(false)
 
@@ -26,11 +25,23 @@ onUnmounted(() => store.stopLive())
 const gift = computed(() => store.giftById(giftId))
 const shopLink = computed(() => gift.value?.links[0]?.url ?? null)
 
+/** Someone else already said they'll bring this (repeatable gift): the guest joins them. */
+const joining = computed(() => !!gift.value?.repeatable && gift.value.claim_count > 0)
+const question = computed(() =>
+  joining.value ? 'Você confirma que também vai levar este presente?' : 'Você confirma que vai levar este presente?',
+)
+const consequence = computed(() =>
+  gift.value?.repeatable
+    ? 'Ao confirmar, você entra na lista de quem vai levar. Outras pessoas também podem levar.'
+    : 'Ao confirmar, ele fica reservado para você e some da lista para as outras pessoas.',
+)
+const yesLabel = computed(() => (joining.value ? 'Sim, também levarei' : 'Sim, confirmo que levo'))
+
 async function confirm() {
   saving.value = true
   failed.value = false
   try {
-    const result = await store.claim(giftId, shareLocation.value)
+    const result = await store.claim(giftId)
     if (result === 'ok' || result === 'already_yours') {
       router.replace({ name: 'guest-done', params: { token, giftId } })
     } else {
@@ -65,32 +76,38 @@ async function confirm() {
     <template v-else>
       <GiftPhoto class="hero" :images="gift.images" :alt="gift.title" :width="350" :height="180" />
       <div class="stack">
-        <span class="eyebrow">Falta confirmar</span>
+        <span class="eyebrow">Só falta confirmar</span>
         <h1>{{ gift.title }}</h1>
         <p v-if="gift.description" class="muted">{{ gift.description }}</p>
         <a v-if="shopLink" class="shop" :href="shopLink" target="_blank" rel="noopener">Ver um exemplo na loja ↗</a>
       </div>
 
-      <div class="note stack question">
-        <p class="big"><b>Você confirma que vai levar este presente?</b></p>
-        <p>Se sim, leve no <b>{{ partyWhen(store.list?.event_at ?? null) }}</b>.</p>
-      </div>
-
-      <label class="check">
-        <input v-model="shareLocation" type="checkbox" />
-        Deixar os anfitriões verem minha região (cerca de 1 km)
-      </label>
+      <section class="card question" aria-labelledby="confirm-question">
+        <h2 id="confirm-question">{{ question }}</h2>
+        <p class="muted">{{ consequence }}</p>
+        <div class="when">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="6" width="20" height="18" rx="3" /><path d="M4 12h20M10 3v6M18 3v6" /></svg>
+          <p>
+            <span class="muted">Leve no dia da festa</span><br />
+            <b>{{ partyWhen(store.list?.event_at ?? null) }}</b>
+          </p>
+        </div>
+      </section>
 
       <p v-if="failed" class="note" role="alert">Não conseguimos salvar. Confira sua internet e tente de novo.</p>
 
-      <div class="stack push-bottom">
+      <div class="stack">
         <button class="btn btn--primary" type="button" :disabled="saving" @click="confirm">
-          {{ saving ? 'Salvando…' : 'Sim, confirmo que levo' }}
+          {{ saving ? 'Salvando…' : yesLabel }}
         </button>
         <RouterLink class="btn btn--outline" :to="{ name: 'guest-list', params: { token } }">Não, voltar para a lista</RouterLink>
-        <p class="small muted center">
-          Só fica salvo quando você tocar em <b>Sim, confirmo que levo</b>. Não pedimos seu nome: este celular vai
-          lembrar da sua escolha.
+      </div>
+
+      <div class="saved small">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+        <p>
+          <b>Sua escolha fica salva neste celular.</b> Não é necessário informar seu nome. Assim, você pode consultar
+          ou alterar sua escolha depois.
         </p>
       </div>
     </template>
@@ -103,10 +120,46 @@ async function confirm() {
   border-radius: 999px 999px 16px 16px !important;
 }
 .question {
-  gap: 6px;
+  gap: 12px;
 }
-.big {
-  font-size: 20px;
+.question h2 {
+  font-size: 27px;
+  line-height: 1.1;
+}
+.when {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--sky);
+  color: var(--cobalt);
+}
+.when svg {
+  flex-shrink: 0;
+}
+.when p {
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.35;
+}
+.when b {
+  font-size: 18px;
+}
+.saved {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  color: var(--muted);
+  padding-bottom: 8px;
+}
+.saved svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--ink);
+}
+.saved b {
+  color: var(--ink);
 }
 .shop {
   min-height: 44px;

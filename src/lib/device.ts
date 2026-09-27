@@ -13,18 +13,34 @@ export function deviceSummary(): string {
 /**
  * Asks the browser for the position and rounds it to ~1 km.
  * Resolves to null if the guest says no, it times out, or geolocation is unavailable.
+ *
+ * `maxWaitMs` caps the whole wait, including time the browser's permission prompt sits
+ * unanswered (the geolocation `timeout` option only starts after permission is given),
+ * so a claim is never held up by an ignored prompt.
  */
-export function roughLocation(timeoutMs = 8000): Promise<{ lat: number; lng: number } | null> {
+export function roughLocation(timeoutMs = 8000, maxWaitMs = 12000): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
     if (!('geolocation' in navigator)) return resolve(null)
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        resolve({
-          lat: Math.round(pos.coords.latitude * 100) / 100,
-          lng: Math.round(pos.coords.longitude * 100) / 100,
-        }),
-      () => resolve(null),
-      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 10 * 60 * 1000 },
-    )
+    let done = false
+    const finish = (value: { lat: number; lng: number } | null) => {
+      if (done) return
+      done = true
+      clearTimeout(guard)
+      resolve(value)
+    }
+    const guard = setTimeout(() => finish(null), maxWaitMs)
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) =>
+          finish({
+            lat: Math.round(pos.coords.latitude * 100) / 100,
+            lng: Math.round(pos.coords.longitude * 100) / 100,
+          }),
+        () => finish(null),
+        { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 10 * 60 * 1000 },
+      )
+    } catch {
+      finish(null)
+    }
   })
 }
