@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import GiftPhoto from '@/components/GiftPhoto.vue'
-import { createGift, deleteGiftPhotos, updateGift, uploadGiftPhoto, type GiftInput, type HostGift } from '@/lib/api'
-import { shrinkImage } from '@/lib/image'
+import { createGift, deleteGiftPhotos, imageUrl, updateGift, uploadGiftPhoto, type GiftInput, type HostGift } from '@/lib/api'
+import { addSpaceAround, shrinkImage } from '@/lib/image'
 
 /** Add a gift (no `gift`) or edit one; lives on its own screen (GiftFormView). Photos are shrunk on pick and uploaded only on save. */
 const props = defineProps<{ listId: string; gift?: HostGift }>()
@@ -17,10 +17,14 @@ const maxClaims = ref<number | ''>(g?.max_claims ?? '')
 
 /** Photo already saved on the gift (kept unless replaced or removed). */
 const savedImages = ref<string[]>(g?.images ?? [])
-/** Newly picked photo, shrunk, waiting for "Salvar". */
+/** The photo as picked (shrunk), before any space is added. From a new pick, or the saved photo once "space" is ticked. */
+const basePhoto = ref<Blob | null>(null)
+/** What will be uploaded on "Salvar": basePhoto, with space around it if ticked. */
 const newPhoto = ref<Blob | null>(null)
 const newPhotoUrl = ref<string | null>(null)
 const preparingPhoto = ref(false)
+/** "Deixar espaço em volta da foto", for photos shot so tight that the frame cuts the gift off. Off = as before. */
+const addSpace = ref(false)
 
 const saving = ref(false)
 const error = ref<string | null>(null)
@@ -34,6 +38,15 @@ function setNewPhoto(blob: Blob | null) {
 }
 onUnmounted(() => setNewPhoto(null))
 
+/** basePhoto is the saved photo (downloaded for "space"), not a new pick. */
+let fromSaved = false
+
+/** Recomputes the photo to upload from basePhoto and the "space" box. */
+async function applySpace() {
+  if (!basePhoto.value) return setNewPhoto(null)
+  setNewPhoto(addSpace.value ? await addSpaceAround(basePhoto.value) : basePhoto.value)
+}
+
 async function pickPhoto(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
@@ -42,7 +55,9 @@ async function pickPhoto(e: Event) {
   error.value = null
   preparingPhoto.value = true
   try {
-    setNewPhoto(await shrinkImage(file))
+    basePhoto.value = await shrinkImage(file)
+    fromSaved = false
+    await applySpace()
   } catch (err) {
     console.error(err)
     error.value = 'Não conseguimos abrir esta foto. Tente outra foto, ou tire uma nova.'
@@ -51,9 +66,39 @@ async function pickPhoto(e: Event) {
   }
 }
 
+// Ticking or unticking the box redoes the preview at once. For a photo that's already saved, ticking it
+// downloads that photo so the space can be added (and the new version replaces it on "Salvar").
+watch(addSpace, async (on) => {
+  error.value = null
+  preparingPhoto.value = true
+  try {
+    if (on && !basePhoto.value && savedImages.value[0]) {
+      const res = await fetch(imageUrl(savedImages.value[0]))
+      if (!res.ok) throw new Error(`photo download failed: ${res.status}`)
+      basePhoto.value = await res.blob()
+      fromSaved = true
+    }
+    if (!on && fromSaved) {
+      // Back to the saved photo exactly as it was: nothing to upload.
+      basePhoto.value = null
+      fromSaved = false
+    }
+    await applySpace()
+  } catch (err) {
+    console.error(err)
+    error.value = 'Não conseguimos preparar a foto. Confira sua internet e tente de novo.'
+    addSpace.value = false
+  } finally {
+    preparingPhoto.value = false
+  }
+})
+
 function removePhoto() {
+  basePhoto.value = null
+  fromSaved = false
   setNewPhoto(null)
   savedImages.value = []
+  addSpace.value = false
 }
 
 /** Accepts "loja.com/produto" as well as full links. Returns null if it isn't a web address. */
@@ -135,6 +180,14 @@ async function save() {
       </div>
     </div>
 
+    <label v-if="previewImages.length" class="check space-check">
+      <input v-model="addSpace" type="checkbox" :disabled="preparingPhoto" />
+      <span>
+        Deixar espaço em volta da foto
+        <span class="small muted">Use se o presente aparece cortado na moldura.</span>
+      </span>
+    </label>
+
     <label class="field">
       Nome do presente
       <input v-model="title" maxlength="120" placeholder="Liquidificador" />
@@ -187,6 +240,10 @@ async function save() {
 .photo-actions {
   flex-grow: 1;
   min-width: 0;
+}
+.space-check > span {
+  display: flex;
+  flex-direction: column;
 }
 .file-btn {
   text-align: center;

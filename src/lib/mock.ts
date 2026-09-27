@@ -65,7 +65,7 @@ const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString(
 const KETTLE_PHOTO =
   'data:image/svg+xml,' +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><rect width="240" height="240" fill="#F4E6C8"/>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="480" height="480"><rect width="240" height="240" fill="#F4E6C8"/>` +
       `<path d="M70 190h100l-8-86H78z" fill="#1E4FA3"/><path d="M78 104c4-30 80-30 84 0" fill="#1E4FA3"/>` +
       `<path d="M162 120c30 0 30 50 2 52" fill="none" stroke="#14213D" stroke-width="10"/>` +
       `<path d="M72 128L40 104" stroke="#1E4FA3" stroke-width="14" stroke-linecap="round"/>` +
