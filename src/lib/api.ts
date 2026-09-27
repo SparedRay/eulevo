@@ -80,9 +80,12 @@ export async function releaseClaim(claimId: string): Promise<boolean> {
   return data as boolean
 }
 
+/** Photos that live in the gift-images bucket (not links or in-memory data URLs). */
+const isStoragePath = (path: string) => !/^(https?:|data:|blob:)/.test(path)
+
 /** Public URL for a photo stored in the gift-images bucket. */
 export function imageUrl(path: string): string {
-  if (/^(https?:|data:|blob:)/.test(path)) return path
+  if (!isStoragePath(path)) return path
   return supabase.storage.from('gift-images').getPublicUrl(path).data.publicUrl
 }
 
@@ -362,5 +365,13 @@ export async function deleteList(listId: string): Promise<void> {
     if (removeError) throw removeError
   }
   const { error } = await supabase.from('lists').delete().eq('id', listId)
+  if (error) throw error
+}
+
+/** Removes photos a gift no longer uses. Links and data URLs are skipped. */
+export async function deleteGiftPhotos(paths: string[]): Promise<void> {
+  const stored = paths.filter(isStoragePath)
+  if (!stored.length || MOCK) return
+  const { error } = await supabase.storage.from('gift-images').remove(stored)
   if (error) throw error
 }

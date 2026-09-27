@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue'
 import GiftPhoto from '@/components/GiftPhoto.vue'
-import { createGift, updateGift, uploadGiftPhoto, type GiftInput, type HostGift } from '@/lib/api'
+import { createGift, deleteGiftPhotos, updateGift, uploadGiftPhoto, type GiftInput, type HostGift } from '@/lib/api'
 import { shrinkImage } from '@/lib/image'
 
 /** Add a gift (no `gift`) or edit one. Photos are shrunk on pick and uploaded only on save. */
@@ -89,8 +89,10 @@ async function save() {
   }
 
   saving.value = true
+  let uploaded: string | null = null
   try {
-    const images = newPhoto.value ? [await uploadGiftPhoto(props.listId, newPhoto.value)] : savedImages.value
+    if (newPhoto.value) uploaded = await uploadGiftPhoto(props.listId, newPhoto.value)
+    const images = uploaded ? [uploaded] : savedImages.value
     const input: GiftInput = {
       title: title.value.trim(),
       description: description.value.trim() || null,
@@ -102,9 +104,13 @@ async function save() {
     }
     if (g) await updateGift(g.id, input)
     else await createGift(props.listId, input)
+    // Photos the gift no longer uses. A failed cleanup only leaves a stray file, so it doesn't block the save.
+    const unused = (g?.images ?? []).filter((p) => !images.includes(p))
+    deleteGiftPhotos(unused).catch(console.error)
     emit('saved')
   } catch (err) {
     console.error(err)
+    if (uploaded) deleteGiftPhotos([uploaded]).catch(console.error)
     error.value = 'Não conseguimos salvar. Confira sua internet e tente de novo.'
   } finally {
     saving.value = false
