@@ -58,6 +58,25 @@ npm run dev:mock             # no Supabase needed: demo list at /l/demo, host sc
 6. **Keys:** *Project Settings → API* → copy the Project URL and the anon/publishable key into `.env.local`.
 7. **Privacy cleanup:** *Database → Extensions →* enable `pg_cron`, then run the `cron.schedule(...)` line at the bottom of `20260927000000_init.sql`. It wipes guest locations 7 days after the party, which the hosts' *Quem vai levar o quê* screen promises.
 
+#### Your own email sender (removes the ~2 emails/hour limit)
+
+Supabase's built-in email service only sends about 2 sign-in emails per hour per project. That runs out fast while testing, or when several hosts sign in on party week. Any SMTP service fixes it; free options:
+
+| Service | Free tier | Needs your own domain? | Notes |
+|---|---|---|---|
+| Gmail | ~500 emails/day | No | Needs 2-Step Verification on the Google account; create an *App password* at <https://myaccount.google.com/apppasswords>. Emails come from that Gmail address. |
+| Brevo | 300 emails/day | No | Verify a sender email address in Brevo, then use its SMTP key. |
+| Resend | 3,000/month (100/day) | Yes | Without a verified domain it only delivers to your own address. |
+
+Then in Supabase:
+
+1. *Authentication → Emails → SMTP Settings* → turn on *Enable custom SMTP* and fill in:
+   - Gmail: host `smtp.gmail.com`, port `587`, username = the Gmail address, password = the App password.
+   - Brevo: host `smtp-relay.brevo.com`, port `587`, username and password from Brevo's *SMTP & API* page.
+   - Sender email: the address you verified (Gmail: the same Gmail address). Sender name: `Eu Levo`.
+2. *Authentication → Rate Limits* → raise *Rate limit for sending emails* (e.g. 30 per hour). This setting only unlocks once custom SMTP is on.
+3. Send yourself a sign-in link to check it arrives (and isn't in spam).
+
 Free-tier note: Supabase pauses a free project after about a week with no activity. Open the dashboard and click *Restore* if that happens.
 
 ### 2. Cloudflare (the public website)
