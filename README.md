@@ -109,6 +109,8 @@ The repo deploys as a Cloudflare Worker that serves static files. `wrangler.json
 
 **Installable app (PWA):** `public/manifest.webmanifest` and `public/sw.js`. The service worker always fetches pages from the network (so a new deploy shows up at once) and caches only the hashed files in `/assets/`; it never touches Supabase. It is registered in production builds only. The installed app opens at `/`, which offers the last list opened on that phone.
 
+**New deploys and open apps:** every build writes `version.json` and bakes the same id into the app. An open app checks it every 5 minutes and when it comes back into view; if a newer build is live, the next change of screen is a full load of that screen, so nobody is interrupted mid-form. If a screen's code file is already gone (each deploy replaces them), the app loads that screen fresh instead of doing nothing (`src/lib/updates.ts`). This is also why migrations must stay additive: an open app may still run the previous build for a while.
+
 **Photos:** stored in the public bucket `gift-images` under `<list_id>/…`; only that list's hosts can upload. They are shrunk in the browser first (longest side 1200 px, WebP; JPEG on Safari).
 
 **Co-hosts:** the person who creates a list owns it. On *Festa e anfitriões* they can create a one-time invite link (valid 7 days) and send it to a partner, who signs in with their own email and becomes a co-host (`accept_invite(token)`). Co-hosts can do everything except invite or remove other hosts, and can leave a list on their own. The owner can hand the list over to a co-host (`transfer_ownership`) or delete it with its photos; nobody can change the owner any other way.

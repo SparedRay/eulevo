@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { isHostSignedIn } from '@/lib/supabase'
 import { APP_NAME } from '@/config'
+import { isMissingCodeError, loadFresh, screenLoaded, updateReady } from '@/lib/updates'
 
 // Screens load on demand. Each import is named once so the same function serves the route and the prefetch below.
 const guestViews = {
@@ -67,6 +68,12 @@ function doneNavigating() {
   navigating.value = false
 }
 
+// A newer version was deployed: swap it in now, at a change of screen, instead of the in-app move.
+// Never on the first load (that one is already fresh) and never mid-screen, so no half-typed form is lost.
+router.beforeEach((to, from) => {
+  if (updateReady && from.matched.length && loadFresh(to.fullPath)) return false
+})
+
 router.beforeEach(() => {
   clearTimeout(showTimer)
   showTimer = setTimeout(() => (navigating.value = true), SHOW_AFTER_MS)
@@ -78,8 +85,15 @@ router.beforeEach(async (to) => {
   }
 })
 
-router.afterEach(doneNavigating)
-router.onError(doneNavigating)
+router.afterEach((_to, _from, failure) => {
+  doneNavigating()
+  if (!failure) screenLoaded()
+})
+router.onError((error, to) => {
+  doneNavigating()
+  // The screen's code is gone after a deploy: load that screen fresh (the new version) instead of doing nothing.
+  if (isMissingCodeError(error)) loadFresh(to.fullPath)
+})
 
 // Guest pages get the list's name once it has loaded (App.vue); host pages use meta.title.
 router.afterEach((to) => {
