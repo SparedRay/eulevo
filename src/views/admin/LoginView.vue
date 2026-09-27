@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
 import PasswordField from '@/components/PasswordField.vue'
-import { googleSignInEnabled, sendLoginLink, signInWithGoogle, signInWithPassword } from '@/lib/supabase'
+import { googleSignInEnabled, sendLoginLink, signInWithCode, signInWithGoogle, signInWithPassword } from '@/lib/supabase'
 import { MOCK } from '@/config'
 
 const route = useRoute()
@@ -15,6 +15,7 @@ const redirectTo = `${window.location.origin}${next}`
 const mode = ref<'link' | 'password'>('link')
 const email = ref('')
 const password = ref('')
+const code = ref('')
 const sending = ref(false)
 const sentTo = ref<string | null>(null)
 const error = ref<string | null>(null)
@@ -55,6 +56,28 @@ async function withLink() {
   else sentTo.value = email.value.trim()
 }
 
+async function withCode() {
+  const digits = code.value.replace(/\D/g, '')
+  if (digits.length < 6) {
+    error.value = 'Digite os números do código que veio no e-mail.'
+    return
+  }
+  sending.value = true
+  error.value = null
+  const result = await signInWithCode(sentTo.value!, digits)
+  sending.value = false
+  if (result === 'ok') router.replace(next)
+  else if (result === 'wrong')
+    error.value = 'Este código não confere ou já venceu. Confira os números, ou peça um e-mail novo.'
+  else error.value = 'Não conseguimos entrar. Confira sua internet e tente de novo.'
+}
+
+function otherEmail() {
+  sentTo.value = null
+  code.value = ''
+  error.value = null
+}
+
 async function withPassword() {
   if (!emailOk()) return
   if (!password.value) {
@@ -87,13 +110,31 @@ async function withPassword() {
 
     <template v-if="sentTo">
       <p class="note">
-        Pronto! Enviamos um link para <b>{{ sentTo }}</b>. Abra seu e-mail <b>neste aparelho</b> e toque no botão
-        da mensagem.
+        Pronto! Enviamos uma mensagem para <b>{{ sentTo }}</b>. Toque no botão da mensagem, ou digite aqui o código
+        que veio junto.
       </p>
-      <button v-if="MOCK" class="btn btn--primary" type="button" @click="openMockLink">
+      <form class="stack" novalidate @submit.prevent="withCode">
+        <label class="field">
+          Código do e-mail
+          <span class="hint">Use o código se a mensagem abrir em outro aparelho ou aplicativo.</span>
+          <input
+            v-model="code"
+            class="code"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="10"
+            placeholder="123456"
+          />
+        </label>
+        <button class="btn btn--primary" type="submit" :disabled="sending">
+          {{ sending ? 'Entrando…' : 'Entrar com o código' }}
+        </button>
+      </form>
+      <p v-if="error" class="note" role="alert">{{ error }}</p>
+      <button v-if="MOCK" class="btn btn--soft" type="button" @click="openMockLink">
         Abrir o link (modo de teste)
       </button>
-      <button class="btn btn--outline" type="button" @click="sentTo = null">Usar outro e-mail</button>
+      <button class="btn btn--outline" type="button" @click="otherEmail">Usar outro e-mail</button>
     </template>
 
     <template v-else>
@@ -159,6 +200,11 @@ async function withPassword() {
   flex-grow: 1;
   height: 1.5px;
   background: var(--line);
+}
+.code {
+  font-size: 26px;
+  letter-spacing: 0.3em;
+  max-width: 260px;
 }
 .other {
   padding-top: 6px;

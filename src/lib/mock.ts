@@ -7,7 +7,7 @@
  * - "Jogo de panelas" is already claimed by someone else, so guests don't see it.
  * - "Panos de prato" is repeatable without a limit; "Taças de vinho" allows 2 people.
  * - "Toalhas de banho" gets taken by someone else the moment you confirm it, to show the "taken" screen.
- * - Password sign-in: any email with the password eulevo2026 (change it under "Sua conta").
+ * - Email code: 123456. Password sign-in: any email with the password eulevo2026 (change it under "Sua conta").
  * - Co-hosts: you own the demo list with rui@exemplo.com. /admin/convite/convite-demo makes you a co-host of
  *   Carla's list; /admin/convite/convite-usado and /admin/convite/convite-vencido show the error screens.
  */
@@ -285,6 +285,15 @@ let mockPassword = 'eulevo2026'
 export function mockSignInWithPassword(email: string, password: string): Promise<'ok' | 'wrong'> {
   return later(() => {
     if (!email.includes('@') || password !== mockPassword) return 'wrong'
+    hostSignedIn = true
+    return 'ok'
+  }, 500)
+}
+
+/** The sign-in email's code in mock mode. */
+export function mockSignInWithCode(code: string): Promise<'ok' | 'wrong'> {
+  return later(() => {
+    if (code !== '123456') return 'wrong'
     hostSignedIn = true
     return 'ok'
   }, 500)

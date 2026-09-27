@@ -69,6 +69,22 @@ export async function sendLoginLink(email: string, redirectTo: string): Promise<
   return !error
 }
 
+export type CodeSignIn = 'ok' | 'wrong' | 'error'
+
+/**
+ * Signs in with the code from the sign-in email (same email as the link, if the Supabase email templates
+ * include {{ .Token }}: see docs/email-templates). Works in any browser or the installed app,
+ * wherever the email itself was opened.
+ */
+export async function signInWithCode(email: string, code: string): Promise<CodeSignIn> {
+  if (MOCK) return (await import('./mock')).mockSignInWithCode(code)
+  const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' })
+  if (!error) return 'ok'
+  if (error.code === 'otp_expired' || error.code === 'otp_disabled') return 'wrong'
+  console.error(error)
+  return 'error'
+}
+
 export type PasswordSignIn = 'ok' | 'wrong' | 'unconfirmed' | 'error'
 
 /** Email + password sign-in, the alternative to the email link. Hosts create a password under "Sua conta". */
