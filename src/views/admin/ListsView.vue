@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
 import InstallHint from '@/components/InstallHint.vue'
+import AccountCard from '@/components/AccountCard.vue'
 import { signOut as hostSignOut } from '@/lib/supabase'
 import { createList, fetchHostLists, type HostList } from '@/lib/api'
 import { fromDateTimeInputs, partyWhen } from '@/lib/format'
@@ -91,6 +92,8 @@ onMounted(load)
     </section>
 
     <p v-if="error" class="note" role="alert">{{ error }}</p>
+
+    <AccountCard />
   </main>
 </template>
 

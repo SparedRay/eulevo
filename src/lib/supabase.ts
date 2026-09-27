@@ -69,6 +69,41 @@ export async function sendLoginLink(email: string, redirectTo: string): Promise<
   return !error
 }
 
+export type PasswordSignIn = 'ok' | 'wrong' | 'unconfirmed' | 'error'
+
+/** Email + password sign-in, the alternative to the email link. Hosts create a password under "Sua conta". */
+export async function signInWithPassword(email: string, password: string): Promise<PasswordSignIn> {
+  if (MOCK) return (await import('./mock')).mockSignInWithPassword(email, password)
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (!error) return 'ok'
+  if (error.code === 'invalid_credentials') return 'wrong'
+  if (error.code === 'email_not_confirmed') return 'unconfirmed'
+  console.error(error)
+  return 'error'
+}
+
+export type SetPasswordResult = 'ok' | 'same' | 'weak' | 'reauth' | 'error'
+
+/** Creates or changes the signed-in host's password. Sends no email. */
+export async function setPassword(password: string): Promise<SetPasswordResult> {
+  if (MOCK) return (await import('./mock')).mockSetPassword(password)
+  const { error } = await supabase.auth.updateUser({ password })
+  if (!error) return 'ok'
+  if (error.code === 'same_password') return 'same'
+  if (error.code === 'weak_password') return 'weak'
+  // Only when "Secure password change" is on in Supabase and the session is old.
+  if (error.code === 'reauthentication_needed') return 'reauth'
+  console.error(error)
+  return 'error'
+}
+
+/** Email of the signed-in host, for "Sua conta". */
+export async function hostEmail(): Promise<string | null> {
+  if (MOCK) return (await import('./mock')).mockHostEmail()
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user.email ?? null
+}
+
 export async function signOut(): Promise<void> {
   if (MOCK) return (await import('./mock')).mockSignOut()
   await supabase.auth.signOut()

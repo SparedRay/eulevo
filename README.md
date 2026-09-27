@@ -18,7 +18,7 @@ All screens are built. Everything has been clicked through in mock mode (`npm ru
 | Setup | Database schema, security rules, database functions | ✅ done |
 | Setup | Mock mode: every screen without Supabase | ✅ done |
 | Guests | List → confirm → thank you / "someone was faster" → what I'm bringing, release, add to calendar | ✅ first version |
-| Hosts | Sign in by email link (Google button appears only if the provider is on), create a list | ✅ first version |
+| Hosts | Sign in by email link or with an optional password (created under *Sua conta*); Google button appears only if the provider is on; create a list | ✅ first version |
 | Hosts | Add / edit / remove gifts with photos; share link (copy / WhatsApp / QR) | ✅ first version |
 | Hosts | Who's bringing what, free a gift up ("Liberar") | ✅ first version |
 | Hosts | Edit party name, date, time and address; invite a co-host by link | ✅ first version |
@@ -47,7 +47,8 @@ npm run dev:mock             # no Supabase needed: demo list at /l/demo, host sc
    (Or with the CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`.)
 3. **Guests without accounts:** *Authentication → Sign In / Providers →* turn on **Allow anonymous sign-ins** and **Allow new users to sign up**. Both are needed: every guest's anonymous session counts as a new sign-up, and so does a host's or co-host's first email sign-in.
 4. **Host sign-in:**
-   - Email links work out of the box (*Email* provider).
+   - Email links work out of the box (*Email* provider). So do passwords: a host can add one under *Sua conta* and then sign in without waiting for an email.
+   - Test accounts without any email: *Authentication → Users → Add user*, set a password and tick *Auto Confirm User*.
    - Google (optional): create an OAuth client in Google Cloud Console, then paste its ID and secret under *Providers → Google*.
      The "Continuar com Google" button only appears once this provider is turned on.
 5. **Redirect URLs:** *Authentication → URL Configuration*
