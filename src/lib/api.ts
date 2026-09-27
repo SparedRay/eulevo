@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { MOCK } from '@/config'
+import { randomId } from './id'
 
 /** Loaded only in mock mode, so production builds leave it out. */
 const mock = () => import('./mock')
@@ -197,7 +198,7 @@ export async function setGiftArchived(id: string, archived: boolean): Promise<vo
 export async function uploadGiftPhoto(listId: string, photo: Blob): Promise<string> {
   if (MOCK) return (await mock()).uploadGiftPhoto(photo)
   const ext = photo.type === 'image/webp' ? 'webp' : 'jpg'
-  const path = `${listId}/${crypto.randomUUID()}.${ext}`
+  const path = `${listId}/${randomId()}.${ext}`
   const { error } = await supabase.storage
     .from('gift-images')
     .upload(path, photo, { contentType: photo.type, cacheControl: '31536000' })

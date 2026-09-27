@@ -12,6 +12,8 @@ const token = route.params.token as string
 
 /** Claim id waiting for "are you sure?" — releasing is never one tap. */
 const confirmingRelease = ref<string | null>(null)
+const releasing = ref(false)
+const releaseFailed = ref(false)
 
 onMounted(async () => {
   if (!store.data || store.token !== token) await store.load(token)
@@ -24,8 +26,17 @@ function whoElse(others: number) {
 }
 
 async function release(claimId: string) {
-  await store.release(claimId)
-  confirmingRelease.value = null
+  releasing.value = true
+  releaseFailed.value = false
+  try {
+    await store.release(claimId)
+    confirmingRelease.value = null
+  } catch (e) {
+    console.error(e)
+    releaseFailed.value = true
+  } finally {
+    releasing.value = false
+  }
 }
 
 function addToCalendar() {
@@ -67,12 +78,19 @@ function addToCalendar() {
 
       <div v-if="confirmingRelease === c.claim_id" class="stack">
         <p><b>Tem certeza?</b> O presente volta para a lista e outra pessoa pode escolher.</p>
-        <button class="btn btn--primary" type="button" @click="release(c.claim_id)">Sim, não posso levar</button>
-        <button class="btn btn--outline" type="button" @click="confirmingRelease = null">Não, eu ainda levo</button>
+        <p v-if="releaseFailed" class="note" role="alert">Não conseguimos salvar. Confira sua internet e tente de novo.</p>
+        <button class="btn btn--primary" type="button" :disabled="releasing" @click="release(c.claim_id)">
+          {{ releasing ? 'Salvando…' : 'Sim, não posso levar' }}
+        </button>
+        <button class="btn btn--outline" type="button" :disabled="releasing" @click="confirmingRelease = null">
+          Não, eu ainda levo
+        </button>
       </div>
       <div v-else class="actions">
         <a v-if="c.links[0]" class="btn btn--soft" :href="c.links[0]?.url" target="_blank" rel="noopener">Ver na loja ↗</a>
-        <button class="btn btn--outline" type="button" @click="confirmingRelease = c.claim_id">Não posso levar</button>
+        <button class="btn btn--outline" type="button" @click="(confirmingRelease = c.claim_id), (releaseFailed = false)">
+          Não posso levar
+        </button>
       </div>
     </article>
 

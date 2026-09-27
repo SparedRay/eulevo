@@ -64,6 +64,12 @@ function status(g: HostGift): { text: string; ok: boolean } {
   return { text: `${n} de ${g.max_claims} pessoas já vão levar`, ok: true }
 }
 
+function goToShare() {
+  const heading = document.getElementById('share-title')
+  heading?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  heading?.focus({ preventScroll: true })
+}
+
 async function focusHeading(id: string) {
   await nextTick()
   document.getElementById(id)?.focus()
@@ -128,6 +134,11 @@ async function archive(g: HostGift, value: boolean) {
       </div>
 
       <HostNav :list-id="listId" :gifts="active.length" :claims="claimCount" />
+
+      <!-- Phones: the share panel sits below the whole list, so offer a shortcut to it. -->
+      <button class="btn btn--soft share-jump" type="button" @click="goToShare">
+        Compartilhar o link com os convidados
+      </button>
 
       <div class="layout">
         <section class="stack gifts" aria-labelledby="gifts-title">
@@ -211,6 +222,9 @@ async function archive(g: HostGift, value: boolean) {
   align-items: start;
 }
 @media (min-width: 900px) {
+  .share-jump {
+    display: none;
+  }
   .layout {
     grid-template-columns: minmax(0, 1fr) 380px;
   }

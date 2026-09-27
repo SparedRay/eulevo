@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
-import { MOCK } from '@/config'
+import { watchEffect } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
+import { APP_NAME, MOCK } from '@/config'
+import { useGuestStore } from '@/stores/guest'
+
+// Guest pages are titled with the list's name, so a guest with several tabs can tell them apart.
+const route = useRoute()
+const guest = useGuestStore()
+watchEffect(() => {
+  if (route.meta.guest && guest.list) document.title = `${guest.list.title} · ${APP_NAME}`
+})
 
 async function restartDemo() {
   // The guard lets production builds drop the mock chunk.

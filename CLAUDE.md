@@ -69,7 +69,8 @@ docs/design.md         visual identity + UX rules — read before touching UI
 | Edit party details, co-host invites (migration `20260927120000_cohost_invites.sql`) | ✅ first version, **untested against real data** |
 | Host login: Google button hidden unless the provider is on | ✅ |
 | pg_cron location purge (ClaimsView promises it: schedule before launch) | ⏳ |
-| PWA, polish | ⏳ |
+| Polish: page titles, WhatsApp preview text, share shortcut on phones, quieter guest refresh, release errors, `randomId()` for plain-http phones | ✅ |
+| PWA | ⏳ |
 
 ## Next steps (in order)
 

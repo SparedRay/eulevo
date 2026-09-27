@@ -1,3 +1,5 @@
+import { randomId } from './id'
+
 function icsDate(d: Date): string {
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 }
@@ -21,7 +23,7 @@ export function downloadCalendarEvent(opts: {
     'VERSION:2.0',
     'PRODID:-//Eu Levo//PT-BR',
     'BEGIN:VEVENT',
-    `UID:${crypto.randomUUID()}@eulevo`,
+    `UID:${randomId()}@eulevo`,
     `DTSTAMP:${icsDate(new Date())}`,
     `DTSTART:${icsDate(start)}`,
     `DTEND:${icsDate(end)}`,

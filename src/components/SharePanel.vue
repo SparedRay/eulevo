@@ -58,7 +58,7 @@ function downloadQr() {
 
 <template>
   <section class="card share" aria-labelledby="share-title">
-    <h2 id="share-title">Compartilhar com os convidados</h2>
+    <h2 id="share-title" tabindex="-1">Compartilhar com os convidados</h2>
     <p class="muted">Mande este link para os convidados. Eles não precisam fazer cadastro.</p>
 
     <label class="field">
@@ -91,6 +91,9 @@ function downloadQr() {
 </template>
 
 <style scoped>
+.share h2:focus {
+  outline: none;
+}
 .share input {
   font-size: 16px;
   text-overflow: ellipsis;

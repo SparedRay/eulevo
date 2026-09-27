@@ -31,15 +31,18 @@ export const useGuestStore = defineStore('guest', () => {
 
   async function load(t: string, { quiet = false } = {}) {
     token.value = t
-    if (!quiet) loading.value = true
-    error.value = null
+    if (!quiet) {
+      loading.value = true
+      error.value = null
+    }
     try {
       await ensureGuestSession()
       const res = await fetchGuestList(t)
       notFound.value = res === null
       data.value = res
     } catch (e) {
-      error.value = 'Não conseguimos carregar a lista. Confira sua internet e tente de novo.'
+      // A failed background refresh keeps what's on screen; the next one will try again.
+      if (!quiet) error.value = 'Não conseguimos carregar a lista. Confira sua internet e tente de novo.'
       console.error(e)
     } finally {
       loading.value = false

@@ -24,7 +24,8 @@ All screens are built. Everything has been clicked through in mock mode (`npm ru
 | Hosts | Edit party name, date, time and address; invite a co-host by link | ✅ first version |
 | Launch | Supabase settings + second migration, then a full test with real data | ⏳ next |
 | Privacy | Daily job that deletes guest locations 7 days after the party (`pg_cron`) | ⏳ not scheduled |
-| Later | Install as an app (PWA), polish | ⏳ |
+| Polish | Page titles, WhatsApp preview text, share shortcut on phones, gentler error handling | ✅ first version |
+| Later | Install as an app (PWA) | ⏳ |
 
 ## Run it locally
 
