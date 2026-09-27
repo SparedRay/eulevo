@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "eulevo",
+  "compatibility_date": "2026-09-01",
+  // Static site only: Cloudflare serves the Vite build output.
+  "assets": {
+    "directory": "./dist",
+    // Unknown paths like /l/abc123 fall back to index.html so Vue Router can handle them.
+    "not_found_handling": "single-page-application"
+  }
+}

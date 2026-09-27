@@ -15,7 +15,7 @@ Env: `.env.local` holds `VITE_SUPABASE_URL` and `VITE_SUPABASE_KEY` (anon/publis
 
 ## Stack
 
-Vue 3 (`<script setup lang="ts">`), Vite, TypeScript strict, Pinia (setup stores), Vue Router. Supabase for Postgres, Auth and Storage. Cloudflare Pages hosting (`public/_redirects` handles SPA deep links). Free tiers only: don't add paid services or heavy dependencies without asking.
+Vue 3 (`<script setup lang="ts">`), Vite, TypeScript strict, Pinia (setup stores), Vue Router. Supabase for Postgres, Auth and Storage. Cloudflare hosting as a Worker with static assets: `wrangler.jsonc` sets `not_found_handling: "single-page-application"` for deep links. Never add a `_redirects` SPA rule; Cloudflare rejects it as an infinite loop. Free tiers only: don't add paid services or heavy dependencies without asking.
 
 ## Layout
 

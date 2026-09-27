@@ -6,7 +6,7 @@ Built to be usable by older relatives: one column, big text, big buttons labelle
 
 - **Front-end:** Vue 3 + Vite + TypeScript, Pinia, Vue Router
 - **Back-end:** Supabase (Postgres, Auth, Storage) — free tier
-- **Hosting:** Cloudflare Pages — free tier
+- **Hosting:** Cloudflare Workers static assets — free tier
 - **UI language:** Brazilian Portuguese
 
 ## Status
@@ -42,22 +42,23 @@ npm run dev                  # http://localhost:5173
    - Email links work out of the box (*Email* provider).
    - Google (optional): create an OAuth client in Google Cloud Console, then paste its ID and secret under *Providers → Google*.
 5. **Redirect URLs:** *Authentication → URL Configuration*
-   - Site URL: `https://eulevo.pages.dev` (your Cloudflare address)
-   - Additional redirect URLs: `http://localhost:5173/**` and `https://eulevo.pages.dev/**`
+   - Site URL: your Cloudflare address (see step 2 below)
+   - Additional redirect URLs: `http://localhost:5173/**` and `https://<your Cloudflare address>/**`
 6. **Keys:** *Project Settings → API* → copy the Project URL and the anon/publishable key into `.env.local`.
 7. *(Optional, privacy)* *Database → Extensions →* enable `pg_cron`, then run the `cron.schedule(...)` line at the bottom of the migration. It wipes guest locations 7 days after the party.
 
 Free-tier note: Supabase pauses a free project after about a week with no activity. Open the dashboard and click *Restore* if that happens.
 
-### 2. Cloudflare Pages (the public website)
+### 2. Cloudflare (the public website)
 
-1. <https://dash.cloudflare.com> → *Workers & Pages → Create → Pages → Connect to Git* → pick this repo.
-2. Project name: `eulevo` → the site will be `https://eulevo.pages.dev` (if taken, choose another and update the Supabase URLs above).
-3. Build settings: framework **Vue**, build command `npm run build`, output directory `dist`.
-4. Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY` (same values as `.env.local`), and `NODE_VERSION` = `22`.
-5. Deploy. Every push to `main` redeploys automatically.
+The repo deploys as a Cloudflare Worker that serves static files. `wrangler.jsonc` points it at `dist/` and turns on single-page-app mode, so deep links like `/l/abc123` open the app. Don't add a `_redirects` file: Cloudflare rejects `/* /index.html` as a loop.
 
-`public/_redirects` makes deep links like `/l/abc123` work.
+1. <https://dash.cloudflare.com> → *Workers & Pages → Create → Import a repository* → pick this repo.
+2. Name: `eulevo` → the site will be `https://eulevo.<your-subdomain>.workers.dev`.
+3. Build command `npm run build`, deploy command `npx wrangler deploy` (the defaults).
+4. **Build** variables (*Settings → Build → Variables and secrets*, not the runtime ones): `VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY` and `NODE_VERSION` = `22`. Vite bakes the Supabase values in at build time.
+5. Every push to `main` redeploys automatically.
+6. Put the final address in Supabase → *Authentication → URL Configuration* (Site URL + `https://<address>/**`).
 
 ## How it works
 
