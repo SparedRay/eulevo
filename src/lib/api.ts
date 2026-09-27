@@ -121,9 +121,13 @@ export async function fetchHostLists(): Promise<HostList[]> {
 /** Creates a list and returns its id. */
 export async function createList(input: NewList): Promise<string> {
   if (MOCK) return (await mock()).createList(input)
-  const { data, error } = await supabase.from('lists').insert(input).select('id').single()
+  // The id is made here and the insert asks for nothing back. Reading the new row back (.select())
+  // would run the "admins read lists" policy before the trigger that makes the creator an admin,
+  // so Postgres would reject the insert with an RLS error.
+  const id = randomId()
+  const { error } = await supabase.from('lists').insert({ id, ...input })
   if (error) throw error
-  return data.id
+  return id
 }
 
 export async function fetchHostList(id: string): Promise<HostList | null> {
