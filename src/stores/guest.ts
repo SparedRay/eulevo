@@ -39,7 +39,7 @@ export const useGuestStore = defineStore('guest', () => {
       notFound.value = res === null
       data.value = res
     } catch (e) {
-      error.value = 'We could not load the list. Please check your internet and try again.'
+      error.value = 'Não conseguimos carregar a lista. Confira sua internet e tente de novo.'
       console.error(e)
     } finally {
       loading.value = false

@@ -28,6 +28,7 @@ Requires Node 20.19+ (or 22+).
 npm install
 cp .env.example .env.local   # then fill in the two Supabase values
 npm run dev                  # http://localhost:5173
+npm run dev:mock             # no Supabase needed: demo list at /l/demo, host screens at /admin
 ```
 
 ## One-time setup

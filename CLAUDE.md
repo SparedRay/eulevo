@@ -7,11 +7,14 @@ Gift-list web app for a housewarming ("chá de casa nova"). Hosts create a list 
 ```bash
 npm install
 npm run dev         # http://localhost:5173
+npm run dev:mock    # same, with in-memory demo data (no Supabase): guest list at /l/demo, hosts at /admin
 npm run build       # vue-tsc type-check + vite build — run before every commit
 npm run typecheck
 ```
 
 Env: `.env.local` holds `VITE_SUPABASE_URL` and `VITE_SUPABASE_KEY` (anon/publishable key). Never commit it.
+
+Mock mode (`MOCK` in `src/config.ts`, `VITE_MOCK=1` via `.env.mock`) only works on the dev server; production builds leave `mock.ts` out. Views never call `supabase` directly: go through `api.ts` / `supabase.ts` helpers, each with an `if (MOCK)` branch, and mirror any new RPC or table logic in `mock.ts`.
 
 ## Stack
 
@@ -22,7 +25,7 @@ Vue 3 (`<script setup lang="ts">`), Vite, TypeScript strict, Pinia (setup stores
 ```
 supabase/migrations/   schema + RLS + functions (source of truth for the DB)
 src/config.ts          APP_NAME
-src/lib/               supabase client, api.ts (typed RPC wrappers), format.ts (pt-BR dates), calendar.ts (.ics), device.ts
+src/lib/               supabase client + auth helpers, api.ts (typed wrappers for every Supabase call), mock.ts (dev-only demo data), format.ts (pt-BR dates), calendar.ts (.ics), device.ts
 src/stores/guest.ts    guest state: load, 20 s auto-refresh, claim, release
 src/styles/            tokens.css (Azulejo palette) + base.css (.page .btn .card .strip .note .field .check …)
 src/components/        TileBand, GiftPhoto
@@ -58,6 +61,7 @@ docs/design.md         visual identity + UX rules — read before touching UI
 | Area | State |
 |---|---|
 | Setup, schema, RLS, RPCs | ✅ |
+| Mock mode (`npm run dev:mock`) | ✅ |
 | Guest flow (list, confirm, done, taken, mine, release, .ics) | ✅ first version, **untested against real data** |
 | Host sign-in + create list | ✅ first version |
 | Host gifts screen (add/edit gift, photo upload, share: copy / WhatsApp / QR) | ⏳ next |
@@ -66,7 +70,7 @@ docs/design.md         visual identity + UX rules — read before touching UI
 
 ## Next steps (in order)
 
-1. **Mock mode for local testing.** When `VITE_MOCK=1`, `src/lib/api.ts` and the host screens use an in-memory demo list (token `demo`, ~6 gifts incl. one repeatable, one already claimed), so every screen can be clicked through without Supabase. Keep the mock in `src/lib/mock.ts` and out of production builds.
+1. ~~Mock mode~~ ✅
 2. Host gifts screen (`GiftsView`): list of gifts with status in words, "Adicionar presente" form (photo, nome, descrição, link da loja, "Mais de um convidado pode levar?" Sim/Não → quantos), edit and archive, plus a share panel (copy link, `https://wa.me/?text=…`, QR code: use a small dependency or generate an SVG).
 3. Host claims screen (`ClaimsView`).
 4. Supabase setup check: anonymous sign-ins enabled, redirect URLs include `http://localhost:5173/**`.

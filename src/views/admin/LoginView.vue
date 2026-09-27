@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
-import { supabase } from '@/lib/supabase'
+import { sendLoginLink, signInWithGoogle } from '@/lib/supabase'
+import { MOCK } from '@/config'
 
 const route = useRoute()
+const router = useRouter()
 const next = typeof route.query.next === 'string' ? route.query.next : '/admin'
 const redirectTo = `${window.location.origin}${next}`
 
@@ -15,8 +17,14 @@ const error = ref<string | null>(null)
 
 async function withGoogle() {
   error.value = null
-  const { error: e } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
-  if (e) error.value = 'Não foi possível entrar com o Google. Tente pelo e-mail.'
+  if (!(await signInWithGoogle(redirectTo))) error.value = 'Não foi possível entrar com o Google. Tente pelo e-mail.'
+  else if (MOCK) router.replace(next)
+}
+
+/** Mock mode only: stands in for tapping the button in the email. */
+async function openMockLink() {
+  await signInWithGoogle(redirectTo)
+  router.replace(next)
 }
 
 async function withEmail() {
@@ -26,12 +34,9 @@ async function withEmail() {
   }
   sending.value = true
   error.value = null
-  const { error: e } = await supabase.auth.signInWithOtp({
-    email: email.value.trim(),
-    options: { emailRedirectTo: redirectTo },
-  })
+  const ok = await sendLoginLink(email.value.trim(), redirectTo)
   sending.value = false
-  if (e) error.value = 'Não conseguimos enviar o e-mail. Tente de novo em um minuto.'
+  if (!ok) error.value = 'Não conseguimos enviar o e-mail. Tente de novo em um minuto.'
   else sentTo.value = email.value.trim()
 }
 </script>
@@ -50,6 +55,9 @@ async function withEmail() {
         Pronto! Enviamos um link para <b>{{ sentTo }}</b>. Abra seu e-mail <b>neste aparelho</b> e toque no botão
         da mensagem.
       </p>
+      <button v-if="MOCK" class="btn btn--primary" type="button" @click="openMockLink">
+        Abrir o link (modo de teste)
+      </button>
       <button class="btn btn--outline" type="button" @click="sentTo = null">Usar outro e-mail</button>
     </template>
 

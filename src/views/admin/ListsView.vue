@@ -2,16 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
-import { supabase } from '@/lib/supabase'
+import { signOut as hostSignOut } from '@/lib/supabase'
+import { createList, fetchHostLists, type HostList } from '@/lib/api'
 import { partyWhen } from '@/lib/format'
-
-interface HostList {
-  id: string
-  title: string
-  event_at: string | null
-  address: string | null
-  share_token: string
-}
 
 const router = useRouter()
 const lists = ref<HostList[]>([])
@@ -23,13 +16,14 @@ const form = ref({ title: '', date: '', time: '16:00', address: '' })
 
 async function load() {
   loading.value = true
-  const { data, error: e } = await supabase
-    .from('lists')
-    .select('id, title, event_at, address, share_token')
-    .order('created_at', { ascending: false })
-  loading.value = false
-  if (e) error.value = 'Não conseguimos carregar suas listas.'
-  else lists.value = data ?? []
+  try {
+    lists.value = await fetchHostLists()
+  } catch (e) {
+    console.error(e)
+    error.value = 'Não conseguimos carregar suas listas. Confira sua internet e recarregue a página.'
+  } finally {
+    loading.value = false
+  }
 }
 
 async function create() {
@@ -40,21 +34,19 @@ async function create() {
   creating.value = true
   error.value = null
   const eventAt = form.value.date ? new Date(`${form.value.date}T${form.value.time || '16:00'}`).toISOString() : null
-  const { data, error: e } = await supabase
-    .from('lists')
-    .insert({ title: form.value.title.trim(), event_at: eventAt, address: form.value.address.trim() || null })
-    .select('id')
-    .single()
-  creating.value = false
-  if (e || !data) {
+  try {
+    const id = await createList({ title: form.value.title.trim(), event_at: eventAt, address: form.value.address.trim() || null })
+    router.push({ name: 'admin-gifts', params: { id } })
+  } catch (e) {
+    console.error(e)
     error.value = 'Não conseguimos criar a lista. Tente de novo.'
-    return
+  } finally {
+    creating.value = false
   }
-  router.push({ name: 'admin-gifts', params: { id: data.id } })
 }
 
 async function signOut() {
-  await supabase.auth.signOut()
+  await hostSignOut()
   router.push({ name: 'admin-login' })
 }
 
@@ -121,7 +113,11 @@ onMounted(load)
 }
 .two {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+@media (min-width: 520px) {
+  .two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>
