@@ -25,7 +25,7 @@ Vue 3 (`<script setup lang="ts">`), Vite, TypeScript strict, Pinia (setup stores
 ```
 supabase/migrations/   schema + RLS + functions (source of truth for the DB)
 src/config.ts          APP_NAME
-src/lib/               supabase client + auth helpers, api.ts (typed wrappers for every Supabase call), mock.ts (dev-only demo data, kept per tab in sessionStorage), image.ts (shrink photos before upload), format.ts (pt-BR dates), calendar.ts (.ics), device.ts
+src/lib/               supabase client + auth helpers, install.ts (PWA install + service worker registration, production only), lastList.ts, api.ts (typed wrappers for every Supabase call), mock.ts (dev-only demo data, kept per tab in sessionStorage), image.ts (shrink photos before upload), format.ts (pt-BR dates), calendar.ts (.ics), device.ts
 src/stores/guest.ts    guest state: load, 20 s auto-refresh, claim, release
 src/styles/            tokens.css (Azulejo palette) + base.css (.page .btn .card .strip .note .field .check …)
 src/components/        TileBand, GiftPhoto, GiftForm (add/edit gift), SharePanel (copy / WhatsApp / QR via `uqr`), HostNav (Presentes · Quem vai levar o quê · Festa e anfitriões), PartyFields (name/date/time/address)
@@ -70,7 +70,7 @@ docs/design.md         visual identity + UX rules — read before touching UI
 | Host login: Google button hidden unless the provider is on | ✅ |
 | pg_cron location purge (ClaimsView promises it: schedule before launch) | ⏳ |
 | Polish: page titles, WhatsApp preview text, share shortcut on phones, quieter guest refresh, release errors, `randomId()` for plain-http phones | ✅ |
-| PWA | ⏳ |
+| PWA: manifest, icons, `public/sw.js` (network-first pages, cached `/assets/`), install card for hosts, home page reopens the last list | ✅ first version |
 
 ## Next steps (in order)
 

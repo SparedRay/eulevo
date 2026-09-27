@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
+import InstallHint from '@/components/InstallHint.vue'
 import { signOut as hostSignOut } from '@/lib/supabase'
 import { createList, fetchHostLists, type HostList } from '@/lib/api'
 import { fromDateTimeInputs, partyWhen } from '@/lib/format'
@@ -66,6 +67,8 @@ onMounted(load)
     </div>
 
     <p v-if="loading" class="muted">Carregando…</p>
+
+    <InstallHint />
 
     <RouterLink
       v-for="l in lists"

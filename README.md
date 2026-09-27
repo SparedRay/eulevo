@@ -25,7 +25,7 @@ All screens are built. Everything has been clicked through in mock mode (`npm ru
 | Launch | Supabase settings + second migration, then a full test with real data | ⏳ next |
 | Privacy | Daily job that deletes guest locations 7 days after the party (`pg_cron`) | ⏳ not scheduled |
 | Polish | Page titles, WhatsApp preview text, share shortcut on phones, gentler error handling | ✅ first version |
-| Later | Install as an app (PWA) | ⏳ |
+| Install | Add to home screen (PWA): app icon, opens offline, hosts get an install card, the home page reopens the last list | ✅ first version |
 
 ## Run it locally
 
@@ -82,6 +82,8 @@ The repo deploys as a Cloudflare Worker that serves static files. `wrangler.json
 **Privacy:** guests are anonymous. Hosts see claim time, device type, a short device tag and, only if the guest ticked the box, a location rounded to ~1 km. The hosts' screen turns that rounded location into a neighbourhood name ("Perto de Pinheiros, São Paulo") with OpenStreetMap's free Nominatim service, once per claim, and saves it as `area_label`; the cleanup job wipes it with the location.
 
 **Lost phone:** if a guest clears their browser, the app forgets what they claimed, but the claim stays. They ask the host, who can free the gift up.
+
+**Installable app (PWA):** `public/manifest.webmanifest` and `public/sw.js`. The service worker always fetches pages from the network (so a new deploy shows up at once) and caches only the hashed files in `/assets/`; it never touches Supabase. It is registered in production builds only. The installed app opens at `/`, which offers the last list opened on that phone.
 
 **Photos:** stored in the public bucket `gift-images` under `<list_id>/…`; only that list's hosts can upload. They are shrunk in the browser first (longest side 1200 px, WebP; JPEG on Safari).
 

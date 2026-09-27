@@ -9,6 +9,7 @@ import {
   type ClaimResult,
 } from '@/lib/api'
 import { deviceSummary, roughLocation } from '@/lib/device'
+import { rememberList } from '@/lib/lastList'
 
 const REFRESH_MS = 20_000
 
@@ -40,6 +41,7 @@ export const useGuestStore = defineStore('guest', () => {
       const res = await fetchGuestList(t)
       notFound.value = res === null
       data.value = res
+      if (res) rememberList({ token: t, title: res.list.title })
     } catch (e) {
       // A failed background refresh keeps what's on screen; the next one will try again.
       if (!quiet) error.value = 'Não conseguimos carregar a lista. Confira sua internet e tente de novo.'
