@@ -1,14 +1,14 @@
 /**
  * In-memory stand-in for Supabase, used only when MOCK is on (see src/config.ts).
  * Mirrors the rules of get_list / claim_gift / release_claim in supabase/migrations.
- * Everything resets on page reload.
+ * State survives reloads in this tab (sessionStorage); the test banner's button starts it over.
  *
  * Demo list: /l/demo (hosts: /admin → "Casa Nova da Ana e do Rui").
  * - "Jogo de panelas" is already claimed by someone else, so guests don't see it.
  * - "Panos de prato" is repeatable without a limit; "Taças de vinho" allows 2 people.
  * - "Toalhas de banho" gets taken by someone else the moment you confirm it, to show the "taken" screen.
  */
-import type { ClaimResult, GiftInput, GiftLink, GuestList, HostGift, HostList, NewList } from './api'
+import { deviceTag, type ClaimResult, type GiftInput, type GiftLink, type GuestList, type HostClaim, type HostGift, type HostList, type NewList } from './api'
 
 interface MockList extends HostList {
   theme: string
@@ -44,7 +44,7 @@ interface MockClaim {
 }
 
 /** This browser's "device" (the anonymous auth uid in the real app). */
-const ME = 'device-me'
+const ME = '5e10c0de-0000-4000-8000-000000000001'
 /** Gift that someone else grabs right before you confirm it. */
 const RACE_GIFT = 'g-toalhas'
 
@@ -152,18 +152,61 @@ function claim(p: Pick<MockClaim, 'gift_id' | 'device_id'> & Partial<MockClaim>)
 const claims: MockClaim[] = [
   claim({
     gift_id: 'g-panelas',
-    device_id: 'device-a',
+    device_id: 'a3f97b21-0000-4000-8000-00000000000a',
     claimed_at: minutesAgo(60 * 20),
     device_summary: 'iPhone',
     lat_rounded: -23.56,
     lng_rounded: -46.69,
   }),
-  claim({ gift_id: 'g-panos', device_id: 'device-b', claimed_at: minutesAgo(60 * 5) }),
-  claim({ gift_id: 'g-panos', device_id: 'device-c', claimed_at: minutesAgo(45), device_summary: 'Windows' }),
-  claim({ gift_id: 'g-tacas', device_id: 'device-d', claimed_at: minutesAgo(60 * 30), device_summary: 'iPhone' }),
+  claim({
+    gift_id: 'g-panos',
+    device_id: 'c812e4d0-0000-4000-8000-00000000000b',
+    claimed_at: minutesAgo(60 * 5),
+    lat_rounded: -23.6,
+    lng_rounded: -46.66,
+    area_label: 'Perto de Moema',
+  }),
+  claim({ gift_id: 'g-panos', device_id: '71bc09aa-0000-4000-8000-00000000000c', claimed_at: minutesAgo(45), device_summary: 'Windows' }),
+  claim({ gift_id: 'g-tacas', device_id: 'a3f97b21-0000-4000-8000-00000000000a', claimed_at: minutesAgo(60 * 30), device_summary: 'iPhone' }),
 ]
 
 let hostSignedIn = false
+
+const STORE_KEY = 'eulevo-mock'
+
+/** Swap the seed data for what this tab saved, so typing a URL or reloading keeps the demo going. */
+function restore() {
+  try {
+    const raw = sessionStorage.getItem(STORE_KEY)
+    if (!raw) return
+    const saved = JSON.parse(raw)
+    lists.splice(0, lists.length, ...saved.lists)
+    gifts.splice(0, gifts.length, ...saved.gifts)
+    claims.splice(0, claims.length, ...saved.claims)
+    hostSignedIn = saved.hostSignedIn
+  } catch {
+    // Unreadable or blocked storage: start from the seed data.
+  }
+}
+restore()
+
+function persist() {
+  try {
+    sessionStorage.setItem(STORE_KEY, JSON.stringify({ lists, gifts, claims, hostSignedIn }))
+  } catch {
+    // Full (big photos) or blocked: the demo keeps working in memory.
+  }
+}
+
+/** Throws the saved demo away and reloads with the seed data. */
+export function resetMock() {
+  try {
+    sessionStorage.removeItem(STORE_KEY)
+  } catch {
+    // nothing saved
+  }
+  location.reload()
+}
 
 /** Pretend network delay, so loading states show up. */
 function later<T>(value: () => T, ms = 250): Promise<T> {
@@ -171,6 +214,7 @@ function later<T>(value: () => T, ms = 250): Promise<T> {
     setTimeout(() => {
       try {
         resolve(value())
+        persist()
       } catch (e) {
         reject(e)
       }
@@ -189,9 +233,11 @@ const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v))
 export const mockHostSignedIn = () => hostSignedIn
 export function mockSignIn() {
   hostSignedIn = true
+  persist()
 }
 export function mockSignOut() {
   hostSignedIn = false
+  persist()
 }
 
 // ---------------------------------------------------------------------------
@@ -262,7 +308,7 @@ export function claimGift(
     if (active.some((c) => c.device_id === ME)) return 'already_yours'
 
     if (giftId === RACE_GIFT && active.length === 0) {
-      claims.push(claim({ gift_id: giftId, device_id: 'device-fast', device_summary: 'iPhone' }))
+      claims.push(claim({ gift_id: giftId, device_id: '9b4e5c77-0000-4000-8000-00000000000f', device_summary: 'iPhone' }))
       return 'taken'
     }
 
@@ -372,4 +418,27 @@ export function uploadGiftPhoto(photo: Blob): Promise<string> {
     reader.onerror = () => reject(reader.error)
     reader.readAsDataURL(photo)
   })
+}
+
+export function hostClaims(listId: string): Promise<HostClaim[]> {
+  return later(() =>
+    claims
+      .filter((c) => c.list_id === listId && !c.released_at)
+      .sort((a, b) => b.claimed_at.localeCompare(a.claimed_at))
+      .map((c) => {
+        const g = gifts.find((x) => x.id === c.gift_id)!
+        return {
+          id: c.id,
+          gift_id: g.id,
+          gift_title: g.title,
+          repeatable: g.repeatable,
+          claimed_at: c.claimed_at,
+          device_summary: c.device_summary,
+          device_tag: deviceTag(c.device_id),
+          lat: c.lat_rounded,
+          lng: c.lng_rounded,
+          area_label: c.area_label,
+        }
+      }),
+  )
 }

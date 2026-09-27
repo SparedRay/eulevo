@@ -201,3 +201,47 @@ export async function uploadGiftPhoto(listId: string, photo: Blob): Promise<stri
   if (error) throw error
   return path
 }
+
+/** An active claim as the hosts see it. Guests stay anonymous: only a short tag of their device id. */
+export interface HostClaim {
+  id: string
+  gift_id: string
+  gift_title: string
+  repeatable: boolean
+  claimed_at: string
+  device_summary: string | null
+  /** First 4 characters of the guest's anonymous id: the same tag means the same phone. */
+  device_tag: string
+  lat: number | null
+  lng: number | null
+  area_label: string | null
+}
+
+export const deviceTag = (deviceId: string) => deviceId.replace(/-/g, '').slice(0, 4)
+
+/** Active (not released) claims of a list, newest first. */
+export async function fetchHostClaims(listId: string): Promise<HostClaim[]> {
+  if (MOCK) return (await mock()).hostClaims(listId)
+  const { data, error } = await supabase
+    .from('claims')
+    .select('id, gift_id, claimed_at, device_id, device_summary, lat_rounded, lng_rounded, area_label, gifts(title, repeatable)')
+    .eq('list_id', listId)
+    .is('released_at', null)
+    .order('claimed_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((c) => {
+    const gift = c.gifts as unknown as { title: string; repeatable: boolean } | null
+    return {
+      id: c.id,
+      gift_id: c.gift_id,
+      gift_title: gift?.title ?? '',
+      repeatable: gift?.repeatable ?? false,
+      claimed_at: c.claimed_at,
+      device_summary: c.device_summary,
+      device_tag: deviceTag(c.device_id),
+      lat: c.lat_rounded === null ? null : Number(c.lat_rounded),
+      lng: c.lng_rounded === null ? null : Number(c.lng_rounded),
+      area_label: c.area_label,
+    }
+  })
+}

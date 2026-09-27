@@ -7,6 +7,7 @@ import TileBand from '@/components/TileBand.vue'
 import GiftPhoto from '@/components/GiftPhoto.vue'
 import GiftForm from '@/components/GiftForm.vue'
 import SharePanel from '@/components/SharePanel.vue'
+import HostNav from '@/components/HostNav.vue'
 import { fetchHostGifts, fetchHostList, setGiftArchived, type HostGift, type HostList } from '@/lib/api'
 import { partyWhen } from '@/lib/format'
 
@@ -29,6 +30,7 @@ const busy = ref(false)
 
 const active = computed(() => gifts.value.filter((g) => !g.archived))
 const archived = computed(() => gifts.value.filter((g) => g.archived))
+const claimCount = computed(() => gifts.value.reduce((n, g) => n + g.claim_count, 0))
 const shareUrl = computed(() => (list.value ? `${window.location.origin}/l/${list.value.share_token}` : ''))
 
 async function load() {
@@ -125,6 +127,8 @@ async function archive(g: HostGift, value: boolean) {
         <p class="muted">Festa: {{ partyWhen(list.event_at) }}</p>
       </div>
 
+      <HostNav :list-id="listId" :gifts="active.length" :claims="claimCount" />
+
       <div class="layout">
         <section class="stack gifts" aria-labelledby="gifts-title">
           <h2 id="gifts-title" tabindex="-1">
@@ -191,9 +195,6 @@ async function archive(g: HostGift, value: boolean) {
 
         <aside class="stack side">
           <SharePanel :url="shareUrl" :title="list.title" :event-at="list.event_at" />
-          <RouterLink class="btn btn--soft" :to="{ name: 'admin-claims', params: { id: listId } }">
-            Quem vai levar o quê
-          </RouterLink>
           <RouterLink class="btn btn--outline" :to="{ name: 'guest-list', params: { token: list.share_token } }">
             Ver a lista como convidado
           </RouterLink>
