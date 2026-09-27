@@ -32,3 +32,24 @@ export function shortDateTime(iso: string): string {
   const day = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short' }).format(d)
   return `${day}, ${time}`
 }
+
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/** Local "2026-10-24" for <input type="date">. */
+export function toDateInput(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** Local "16:00" for <input type="time">. */
+export function toTimeInput(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** Date + time inputs back to an ISO timestamp (null without a date; 16h when the time is empty). */
+export function fromDateTimeInputs(date: string, time: string): string | null {
+  return date ? new Date(`${date}T${time || '16:00'}`).toISOString() : null
+}

@@ -7,10 +7,13 @@
  * - "Jogo de panelas" is already claimed by someone else, so guests don't see it.
  * - "Panos de prato" is repeatable without a limit; "Taças de vinho" allows 2 people.
  * - "Toalhas de banho" gets taken by someone else the moment you confirm it, to show the "taken" screen.
+ * - Co-hosts: you own the demo list with rui@exemplo.com. /admin/convite/convite-demo makes you a co-host of
+ *   Carla's list; /admin/convite/convite-usado and /admin/convite/convite-vencido show the error screens.
  */
-import { deviceTag, type ClaimResult, type GiftInput, type GiftLink, type GuestList, type HostClaim, type HostGift, type HostList, type NewList } from './api'
+import { deviceTag, type ClaimResult, type Invite, type InviteResult, type ListHost, type GiftInput, type GiftLink, type GuestList, type HostClaim, type HostGift, type HostList, type NewList } from './api'
 
 interface MockList extends HostList {
+  owner_id: string
   theme: string
   created_at: string
 }
@@ -43,6 +46,10 @@ interface MockClaim {
   released_at: string | null
 }
 
+/** The signed-in host (a real account in the real app). */
+const HOST_ME = 'host-me'
+const HOST_EMAIL = 'voce@exemplo.com'
+
 /** This browser's "device" (the anonymous auth uid in the real app). */
 const ME = '5e10c0de-0000-4000-8000-000000000001'
 /** Gift that someone else grabs right before you confirm it. */
@@ -70,10 +77,47 @@ const lists: MockList[] = [
     event_at: new Date(2026, 9, 24, 16, 0).toISOString(),
     address: 'Rua das Laranjeiras, 120, apto 32, Pinheiros, São Paulo',
     share_token: 'demo',
+    owner_id: HOST_ME,
     theme: 'azulejo',
     created_at: minutesAgo(60 * 24 * 3),
   },
+  {
+    id: 'list-carla',
+    title: 'Chá de bebê da Carla',
+    event_at: new Date(2026, 10, 7, 15, 0).toISOString(),
+    address: 'Rua Harmonia, 45, Vila Madalena, São Paulo',
+    share_token: 'carla',
+    owner_id: 'host-carla',
+    theme: 'azulejo',
+    created_at: minutesAgo(60 * 24),
+  },
 ]
+
+interface MockAdmin {
+  list_id: string
+  user_id: string
+  email: string
+  created_at: string
+}
+
+const admins: MockAdmin[] = [
+  { list_id: 'list-demo', user_id: HOST_ME, email: HOST_EMAIL, created_at: minutesAgo(60 * 24 * 3) },
+  { list_id: 'list-demo', user_id: 'host-rui', email: 'rui@exemplo.com', created_at: minutesAgo(60 * 24 * 2) },
+  { list_id: 'list-carla', user_id: 'host-carla', email: 'carla@exemplo.com', created_at: minutesAgo(60 * 24) },
+]
+
+interface MockInvite extends Invite {
+  list_id: string
+  used_at: string | null
+}
+
+const invites: MockInvite[] = [
+  { token: 'convite-demo', list_id: 'list-carla', created_at: minutesAgo(60), expires_at: minutesAgo(-60 * 24 * 7), used_at: null },
+  { token: 'convite-usado', list_id: 'list-carla', created_at: minutesAgo(600), expires_at: minutesAgo(-60 * 24 * 6), used_at: minutesAgo(300) },
+  { token: 'convite-vencido', list_id: 'list-carla', created_at: minutesAgo(60 * 24 * 9), expires_at: minutesAgo(60 * 24 * 2), used_at: null },
+]
+
+const isAdmin = (listId: string, userId = HOST_ME) => admins.some((a) => a.list_id === listId && a.user_id === userId)
 
 /** `order` only spaces out created_at so the demo gifts keep this order. */
 function gift(p: Partial<MockGift> & Pick<MockGift, 'id' | 'title'>, order: number): MockGift {
@@ -180,9 +224,12 @@ function restore() {
     const raw = sessionStorage.getItem(STORE_KEY)
     if (!raw) return
     const saved = JSON.parse(raw)
+    if (!saved.admins) return // saved before co-hosts existed: start fresh
     lists.splice(0, lists.length, ...saved.lists)
     gifts.splice(0, gifts.length, ...saved.gifts)
     claims.splice(0, claims.length, ...saved.claims)
+    admins.splice(0, admins.length, ...saved.admins)
+    invites.splice(0, invites.length, ...saved.invites)
     hostSignedIn = saved.hostSignedIn
   } catch {
     // Unreadable or blocked storage: start from the seed data.
@@ -192,7 +239,7 @@ restore()
 
 function persist() {
   try {
-    sessionStorage.setItem(STORE_KEY, JSON.stringify({ lists, gifts, claims, hostSignedIn }))
+    sessionStorage.setItem(STORE_KEY, JSON.stringify({ lists, gifts, claims, admins, invites, hostSignedIn }))
   } catch {
     // Full (big photos) or blocked: the demo keeps working in memory.
   }
@@ -347,7 +394,8 @@ export function releaseClaim(claimId: string): Promise<boolean> {
 export function hostLists(): Promise<HostList[]> {
   return later(() =>
     copy(
-      [...lists]
+      lists
+        .filter((l) => isAdmin(l.id))
         .sort((a, b) => b.created_at.localeCompare(a.created_at))
         .map(({ id, title, event_at, address, share_token }) => ({ id, title, event_at, address, share_token })),
     ),
@@ -357,14 +405,16 @@ export function hostLists(): Promise<HostList[]> {
 export function createList(input: NewList): Promise<string> {
   return later(() => {
     const id = newId('list')
-    lists.push({ ...input, id, share_token: newId('t'), theme: 'azulejo', created_at: new Date().toISOString() })
+    const now = new Date().toISOString()
+    lists.push({ ...input, id, share_token: newId('t'), owner_id: HOST_ME, theme: 'azulejo', created_at: now })
+    admins.push({ list_id: id, user_id: HOST_ME, email: HOST_EMAIL, created_at: now })
     return id
   })
 }
 
 export function hostList(id: string): Promise<HostList | null> {
   return later(() => {
-    const l = lists.find((x) => x.id === id)
+    const l = lists.find((x) => x.id === id && isAdmin(x.id))
     return l ? copy({ id: l.id, title: l.title, event_at: l.event_at, address: l.address, share_token: l.share_token }) : null
   })
 }
@@ -441,4 +491,79 @@ export function hostClaims(listId: string): Promise<HostClaim[]> {
         }
       }),
   )
+}
+
+// ---------------------------------------------------------------------------
+// Party details and co-hosts
+// ---------------------------------------------------------------------------
+
+export function updateList(id: string, input: NewList): Promise<void> {
+  return later(() => {
+    const l = lists.find((x) => x.id === id && isAdmin(x.id))
+    if (!l) throw new Error('list not found')
+    Object.assign(l, copy(input))
+  })
+}
+
+export function listHosts(listId: string): Promise<ListHost[]> {
+  return later(() => {
+    const l = lists.find((x) => x.id === listId)
+    if (!l || !isAdmin(listId)) return []
+    return admins
+      .filter((a) => a.list_id === listId)
+      .sort((a, b) => Number(b.user_id === l.owner_id) - Number(a.user_id === l.owner_id) || a.created_at.localeCompare(b.created_at))
+      .map((a) => ({ user_id: a.user_id, email: a.email, is_owner: a.user_id === l.owner_id, is_me: a.user_id === HOST_ME }))
+  })
+}
+
+const isOwner = (listId: string) => lists.some((l) => l.id === listId && l.owner_id === HOST_ME)
+
+export function removeCoHost(listId: string, userId: string): Promise<void> {
+  return later(() => {
+    if (!isOwner(listId)) throw new Error('only the owner removes co-hosts')
+    const i = admins.findIndex((a) => a.list_id === listId && a.user_id === userId)
+    if (i >= 0) admins.splice(i, 1)
+  })
+}
+
+export function openInvites(listId: string): Promise<Invite[]> {
+  return later(() => {
+    if (!isOwner(listId)) return []
+    const now = new Date().toISOString()
+    return invites
+      .filter((i) => i.list_id === listId && !i.used_at && i.expires_at > now)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map(({ token, created_at, expires_at }) => ({ token, created_at, expires_at }))
+  })
+}
+
+export function createInvite(listId: string): Promise<Invite> {
+  return later(() => {
+    if (!isOwner(listId)) throw new Error('only the owner invites')
+    const invite = { token: newId('convite'), list_id: listId, created_at: new Date().toISOString(), expires_at: minutesAgo(-60 * 24 * 7), used_at: null }
+    invites.push(invite)
+    return { token: invite.token, created_at: invite.created_at, expires_at: invite.expires_at }
+  })
+}
+
+export function cancelInvite(token: string): Promise<void> {
+  return later(() => {
+    const i = invites.findIndex((x) => x.token === token && isOwner(x.list_id))
+    if (i >= 0) invites.splice(i, 1)
+  })
+}
+
+export function acceptInvite(token: string): Promise<InviteResult> {
+  return later(() => {
+    if (!hostSignedIn) return { status: 'not_host' }
+    const i = invites.find((x) => x.token === token)
+    if (!i) return { status: 'not_found' }
+    const title = lists.find((l) => l.id === i.list_id)?.title
+    if (isAdmin(i.list_id)) return { status: 'already_host', list_id: i.list_id, title }
+    if (i.used_at) return { status: 'used' }
+    if (i.expires_at < new Date().toISOString()) return { status: 'expired' }
+    admins.push({ list_id: i.list_id, user_id: HOST_ME, email: HOST_EMAIL, created_at: new Date().toISOString() })
+    i.used_at = new Date().toISOString()
+    return { status: 'ok', list_id: i.list_id, title }
+  }, 500)
 }

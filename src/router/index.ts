@@ -24,6 +24,9 @@ export const router = createRouter({
         { path: '', name: 'admin-lists', component: () => import('@/views/admin/ListsView.vue') },
         { path: 'lists/:id', name: 'admin-gifts', component: () => import('@/views/admin/GiftsView.vue') },
         { path: 'lists/:id/claims', name: 'admin-claims', component: () => import('@/views/admin/ClaimsView.vue') },
+        { path: 'lists/:id/settings', name: 'admin-settings', component: () => import('@/views/admin/SettingsView.vue') },
+        // Co-host invite link; signing in first is handled by the host guard
+        { path: 'convite/:token', name: 'admin-invite', component: () => import('@/views/admin/InviteView.vue') },
       ],
     },
 

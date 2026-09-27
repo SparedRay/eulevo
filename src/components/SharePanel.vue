@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref } from 'vue'
 import { encode } from 'uqr'
 import { partyWhen } from '@/lib/format'
+import { copyText } from '@/lib/clipboard'
 
 /** Share the guest link: copy it, send it on WhatsApp, or show / download a QR code. */
 const props = defineProps<{ url: string; title: string; eventAt: string | null }>()
@@ -19,13 +20,7 @@ const message = computed(
 const whatsappHref = computed(() => `https://wa.me/?text=${encodeURIComponent(message.value)}`)
 
 async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(props.url)
-  } catch {
-    // Older browsers / plain http: select the text so the host can copy it by hand.
-    linkInput.value?.select()
-    document.execCommand('copy')
-  }
+  await copyText(props.url, linkInput.value)
   copied.value = true
   clearTimeout(copiedTimer)
   copiedTimer = setTimeout(() => (copied.value = false), 4000)

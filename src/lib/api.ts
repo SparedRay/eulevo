@@ -245,3 +245,90 @@ export async function fetchHostClaims(listId: string): Promise<HostClaim[]> {
     }
   })
 }
+
+// ---------------------------------------------------------------------------
+// Party details and co-hosts
+// ---------------------------------------------------------------------------
+
+/** Hosts may change title, date and address; guests see the change on their next refresh. */
+export async function updateList(id: string, input: NewList): Promise<void> {
+  if (MOCK) return (await mock()).updateList(id, input)
+  const { error } = await supabase.from('lists').update(input).eq('id', id)
+  if (error) throw error
+}
+
+export interface ListHost {
+  user_id: string
+  email: string
+  is_owner: boolean
+  is_me: boolean
+}
+
+/** Everyone who manages the list, owner first. */
+export async function fetchListHosts(listId: string): Promise<ListHost[]> {
+  if (MOCK) return (await mock()).listHosts(listId)
+  const { data, error } = await supabase.rpc('list_hosts', { p_list: listId })
+  if (error) throw error
+  return (data as ListHost[] | null) ?? []
+}
+
+/** Only the owner can remove co-hosts (RLS "owner manages co-hosts"). */
+export async function removeCoHost(listId: string, userId: string): Promise<void> {
+  if (MOCK) return (await mock()).removeCoHost(listId, userId)
+  const { error } = await supabase.from('list_admins').delete().eq('list_id', listId).eq('user_id', userId)
+  if (error) throw error
+}
+
+export interface Invite {
+  token: string
+  created_at: string
+  expires_at: string
+}
+
+/** Invites that can still be used. Only the owner can see them. */
+export async function fetchOpenInvites(listId: string): Promise<Invite[]> {
+  if (MOCK) return (await mock()).openInvites(listId)
+  const { data, error } = await supabase
+    .from('list_invites')
+    .select('token, created_at, expires_at')
+    .eq('list_id', listId)
+    .is('used_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function createInvite(listId: string): Promise<Invite> {
+  if (MOCK) return (await mock()).createInvite(listId)
+  const { data, error } = await supabase
+    .from('list_invites')
+    .insert({ list_id: listId })
+    .select('token, created_at, expires_at')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function cancelInvite(token: string): Promise<void> {
+  if (MOCK) return (await mock()).cancelInvite(token)
+  const { error } = await supabase.from('list_invites').delete().eq('token', token)
+  if (error) throw error
+}
+
+export type InviteStatus = 'ok' | 'already_host' | 'used' | 'expired' | 'not_found' | 'not_host'
+
+export interface InviteResult {
+  status: InviteStatus
+  list_id?: string
+  title?: string
+}
+
+export async function acceptInvite(token: string): Promise<InviteResult> {
+  if (MOCK) return (await mock()).acceptInvite(token)
+  const { data, error } = await supabase.rpc('accept_invite', { p_token: token })
+  if (error) throw error
+  return data as InviteResult
+}
+
+export const inviteUrl = (token: string) => `${window.location.origin}/admin/convite/${token}`

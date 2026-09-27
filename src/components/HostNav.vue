@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Switch between a list's two host screens. Plain links, labelled with counts, current one filled. */
+/** Switch between a list's host screens. Plain links, labelled with counts, current one filled. */
 defineProps<{ listId: string; gifts: number; claims: number }>()
 </script>
 
@@ -10,6 +10,9 @@ defineProps<{ listId: string; gifts: number; claims: number }>()
     </RouterLink>
     <RouterLink class="btn btn--outline" exact-active-class="current" :to="{ name: 'admin-claims', params: { id: listId } }">
       Quem vai levar o quê ({{ claims }})
+    </RouterLink>
+    <RouterLink class="btn btn--outline" exact-active-class="current" :to="{ name: 'admin-settings', params: { id: listId } }">
+      Festa e anfitriões
     </RouterLink>
   </nav>
 </template>

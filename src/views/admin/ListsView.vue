@@ -4,7 +4,8 @@ import { useRouter } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
 import { signOut as hostSignOut } from '@/lib/supabase'
 import { createList, fetchHostLists, type HostList } from '@/lib/api'
-import { partyWhen } from '@/lib/format'
+import { fromDateTimeInputs, partyWhen } from '@/lib/format'
+import PartyFields, { type PartyForm } from '@/components/PartyFields.vue'
 
 const router = useRouter()
 const lists = ref<HostList[]>([])
@@ -12,7 +13,7 @@ const loading = ref(true)
 const creating = ref(false)
 const error = ref<string | null>(null)
 
-const form = ref({ title: '', date: '', time: '16:00', address: '' })
+const form = ref<PartyForm>({ title: '', date: '', time: '16:00', address: '' })
 
 async function load() {
   loading.value = true
@@ -33,7 +34,7 @@ async function create() {
   }
   creating.value = true
   error.value = null
-  const eventAt = form.value.date ? new Date(`${form.value.date}T${form.value.time || '16:00'}`).toISOString() : null
+  const eventAt = fromDateTimeInputs(form.value.date, form.value.time)
   try {
     const id = await createList({ title: form.value.title.trim(), event_at: eventAt, address: form.value.address.trim() || null })
     router.push({ name: 'admin-gifts', params: { id } })
@@ -79,12 +80,7 @@ onMounted(load)
     <section class="card create">
       <h2>Criar uma lista nova</h2>
       <form class="stack" @submit.prevent="create">
-        <label class="field">Nome da lista <input v-model="form.title" placeholder="Casa Nova" /></label>
-        <div class="two">
-          <label class="field">Dia da festa <input v-model="form.date" type="date" /></label>
-          <label class="field">Horário <input v-model="form.time" type="time" /></label>
-        </div>
-        <label class="field">Endereço da festa <input v-model="form.address" placeholder="Rua, número, bairro" /></label>
+        <PartyFields v-model="form" />
         <button class="btn btn--primary" type="submit" :disabled="creating">
           {{ creating ? 'Criando…' : 'Criar lista' }}
         </button>
@@ -110,14 +106,5 @@ onMounted(load)
 .create {
   border-style: dashed;
   max-width: 720px;
-}
-.two {
-  display: grid;
-  gap: 12px;
-}
-@media (min-width: 520px) {
-  .two {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 </style>

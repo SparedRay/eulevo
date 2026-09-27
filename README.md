@@ -36,7 +36,7 @@ npm run dev:mock             # no Supabase needed: demo list at /l/demo, host sc
 ### 1. Supabase (database, login, photos)
 
 1. Create a free project at <https://supabase.com/dashboard> (region: São Paulo).
-2. **Database:** open *SQL Editor*, paste the whole file `supabase/migrations/20260927000000_init.sql`, and run it.
+2. **Database:** open *SQL Editor* and run each file in `supabase/migrations/` in name order (first `20260927000000_init.sql`, then `20260927120000_cohost_invites.sql`).
    (Or with the CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`.)
 3. **Guests without accounts:** *Authentication → Sign In / Providers →* turn on **Allow anonymous sign-ins**.
 4. **Host sign-in:**
