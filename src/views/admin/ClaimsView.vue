@@ -3,6 +3,7 @@
 // Design reference: canvas page "C·4 Azulejo — final flow" → "Host · Who's bringing what".
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import LoadingState from '@/components/LoadingState.vue'
 import TileBand from '@/components/TileBand.vue'
 import HostNav from '@/components/HostNav.vue'
 import {
@@ -144,7 +145,7 @@ async function release(c: HostClaim) {
   <main class="page page--wide">
     <RouterLink class="back-link" :to="{ name: 'admin-lists' }">← Suas listas</RouterLink>
 
-    <p v-if="loading" class="muted">Carregando…</p>
+    <LoadingState v-if="loading" />
 
     <template v-else-if="loadFailed">
       <h1>Algo deu errado</h1>

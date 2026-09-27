@@ -1,16 +1,17 @@
 <script setup lang="ts">
 // Host · Your gift list: gifts with their status in words, add / edit / remove, and the share panel.
 // Design reference: canvas page "C·4 Azulejo — final flow" → "Host · Your gift list" and "Host · Add a gift".
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import LoadingState from '@/components/LoadingState.vue'
 import TileBand from '@/components/TileBand.vue'
 import GiftPhoto from '@/components/GiftPhoto.vue'
-import GiftForm from '@/components/GiftForm.vue'
 import SharePanel from '@/components/SharePanel.vue'
 import HostNav from '@/components/HostNav.vue'
 import { fetchHostGifts, fetchHostList, setGiftArchived, type HostGift, type HostList } from '@/lib/api'
 import { partyWhen } from '@/lib/format'
 import { watchList } from '@/lib/live'
+import { takeFlash } from '@/lib/flash'
 
 const route = useRoute()
 const listId = route.params.id as string
@@ -20,11 +21,8 @@ const gifts = ref<HostGift[]>([])
 const loading = ref(true)
 const loadFailed = ref(false)
 const error = ref<string | null>(null)
-/** Short confirmation after a save, read out by screen readers. */
-const saved = ref<string | null>(null)
-
-/** Which gift has its form open: a gift id, 'new', or none. Only one form at a time. */
-const editing = ref<string | null>(null)
+/** Short confirmation after a save (also coming back from the gift screen), read out by screen readers. */
+const saved = ref<string | null>(takeFlash())
 /** Gift waiting for "Tem certeza?" before it leaves the list. */
 const confirmingArchive = ref<string | null>(null)
 const busy = ref(false)
@@ -78,25 +76,6 @@ function goToShare() {
   heading?.focus({ preventScroll: true })
 }
 
-async function focusHeading(id: string) {
-  await nextTick()
-  document.getElementById(id)?.focus()
-}
-
-function openForm(id: string) {
-  editing.value = id
-  confirmingArchive.value = null
-  saved.value = null
-  error.value = null
-}
-
-async function onSaved() {
-  const wasNew = editing.value === 'new'
-  editing.value = null
-  saved.value = wasNew ? 'Presente adicionado. Ele já aparece para os convidados.' : 'Alterações salvas.'
-  await load()
-  focusHeading('gifts-title')
-}
 
 async function archive(g: HostGift, value: boolean) {
   busy.value = true
@@ -121,7 +100,7 @@ async function archive(g: HostGift, value: boolean) {
   <main class="page page--wide">
     <RouterLink class="back-link" :to="{ name: 'admin-lists' }">← Suas listas</RouterLink>
 
-    <p v-if="loading" class="muted">Carregando…</p>
+    <LoadingState v-if="loading" />
 
     <template v-else-if="loadFailed">
       <h1>Algo deu errado</h1>
@@ -157,21 +136,22 @@ async function archive(g: HostGift, value: boolean) {
           <p v-if="saved" class="strip" role="status">{{ saved }}</p>
           <p v-if="error" class="note" role="alert">{{ error }}</p>
 
-          <GiftForm v-if="editing === 'new'" :list-id="listId" @saved="onSaved" @cancel="editing = null" />
-          <button v-else class="btn btn--primary" type="button" @click="openForm('new')">Adicionar presente</button>
+          <RouterLink class="btn btn--primary" :to="{ name: 'admin-gift-new', params: { id: listId } }">
+            Adicionar presente
+          </RouterLink>
 
-          <p v-if="!active.length && editing !== 'new'" class="note">
+          <p v-if="!active.length" class="note">
             Sua lista ainda está vazia. Toque em "Adicionar presente" para colocar o primeiro.
           </p>
 
           <template v-for="(g, i) in active" :key="g.id">
-            <GiftForm v-if="editing === g.id" :list-id="listId" :gift="g" @saved="onSaved" @cancel="editing = null" />
-            <article v-else class="card">
+            <article class="card">
               <div class="gift-row">
                 <GiftPhoto :images="g.images" :alt="g.title" :width="80" :height="96" :tint="i % 2 ? 'sand' : 'sky'" />
                 <div class="stack tight">
-                  <h3 class="display">{{ g.title }}</h3>
-                  <p class="status" :class="{ 'status--ok': status(g).ok }">{{ status(g).text }}</p>
+                  <!-- Taken (nobody else can bring it): name struck through, status in red -->
+                  <h3 class="display" :class="{ 'title--taken': !status(g).ok }">{{ g.title }}</h3>
+                  <p class="status" :class="status(g).ok ? 'status--ok' : 'status--taken'">{{ status(g).text }}</p>
                   <a v-if="g.links[0]" class="small" :href="g.links[0].url" target="_blank" rel="noopener">
                     Link da loja ↗
                   </a>
@@ -191,7 +171,9 @@ async function archive(g: HostGift, value: boolean) {
                 </button>
               </div>
               <div v-else class="actions">
-                <button class="btn btn--outline" type="button" @click="openForm(g.id)">Editar</button>
+                <RouterLink class="btn btn--outline" :to="{ name: 'admin-gift-edit', params: { id: listId, giftId: g.id } }">
+                  Editar
+                </RouterLink>
                 <button class="btn btn--outline" type="button" @click="confirmingArchive = g.id">Tirar da lista</button>
               </div>
             </article>
@@ -266,6 +248,14 @@ h3 {
 }
 .status--ok {
   color: var(--available);
+}
+.status--taken {
+  color: var(--taken);
+}
+.title--taken {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--taken);
 }
 .actions {
   display: flex;

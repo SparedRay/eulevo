@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import LoadingState from '@/components/LoadingState.vue'
 import TileBand from '@/components/TileBand.vue'
 import InstallHint from '@/components/InstallHint.vue'
 import AccountCard from '@/components/AccountCard.vue'
@@ -67,7 +68,7 @@ onMounted(load)
       <button class="btn btn--outline btn--auto" type="button" @click="signOut">Sair</button>
     </div>
 
-    <p v-if="loading" class="muted">Carregando…</p>
+    <LoadingState v-if="loading" label="Carregando suas listas…" />
 
     <InstallHint />
 

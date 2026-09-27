@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import LoadingState from '@/components/LoadingState.vue'
 import GiftPhoto from '@/components/GiftPhoto.vue'
 import { useGuestStore } from '@/stores/guest'
 import { partyWhen } from '@/lib/format'
@@ -64,6 +65,8 @@ function addToCalendar() {
       <h1>O que você vai levar</h1>
       <p class="muted">Leve no <b class="ink">{{ partyWhen(store.list?.event_at ?? null) }}</b>.</p>
     </div>
+
+    <LoadingState v-if="store.loading" />
 
     <p v-if="!store.mine.length && !store.loading" class="note">
       Você ainda não escolheu nenhum presente.

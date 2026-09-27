@@ -121,8 +121,8 @@ src/lib/               supabase client + sign-in, api.ts (every database call), 
                        photo shrinking, date formatting (pt-BR), calendar (.ics), clipboard, device helpers
 src/stores/guest.ts    guest state (list, my gifts, claim, release, auto-refresh every 20 s)
 src/styles/            Azulejo design tokens + base styles
-src/components/        TileBand, GiftPhoto, GiftForm, SharePanel (link / WhatsApp / QR), HostNav, PartyFields
+src/components/        TileBand, GiftPhoto, GiftForm, SharePanel (link / WhatsApp / QR), HostNav, PartyFields, LoadingState, …
 src/views/guest/       ListView, ConfirmView, DoneView, TakenView, MineView
-src/views/admin/       LoginView, ListsView, GiftsView, ClaimsView, SettingsView (party + co-hosts), InviteView
+src/views/admin/       LoginView, ListsView, GiftsView, GiftFormView, ClaimsView, SettingsView (party + co-hosts), InviteView
 docs/design.md         visual identity and UX rules
 ```

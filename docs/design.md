@@ -14,6 +14,7 @@ Visual identity **Azulejo** (option C·4 on the design canvas "Housewarming Gift
 | muted | `#3A4660` | secondary text (passes 4.5:1 on paper) |
 | line / input-line | `#C9D3E6` / `#9AA4B8` | card and input borders |
 | available | `#1E6B3A` | "Ainda disponível" status (host) |
+| taken | `#B42318` | "Alguém vai levar" / "Completo" status (host); the gift name is struck through too |
 
 ## Type
 

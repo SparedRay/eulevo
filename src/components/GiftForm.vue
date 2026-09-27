@@ -4,7 +4,7 @@ import GiftPhoto from '@/components/GiftPhoto.vue'
 import { createGift, deleteGiftPhotos, updateGift, uploadGiftPhoto, type GiftInput, type HostGift } from '@/lib/api'
 import { shrinkImage } from '@/lib/image'
 
-/** Add a gift (no `gift`) or edit one. Photos are shrunk on pick and uploaded only on save. */
+/** Add a gift (no `gift`) or edit one; lives on its own screen (GiftFormView). Photos are shrunk on pick and uploaded only on save. */
 const props = defineProps<{ listId: string; gift?: HostGift }>()
 const emit = defineEmits<{ saved: []; cancel: [] }>()
 
@@ -119,8 +119,7 @@ async function save() {
 </script>
 
 <template>
-  <form class="card gift-form" novalidate @submit.prevent="save">
-    <h2>{{ g ? 'Editar presente' : 'Adicionar presente' }}</h2>
+  <form class="gift-form" novalidate @submit.prevent="save">
 
     <div class="photo">
       <GiftPhoto :images="previewImages" :alt="title || 'Foto do presente'" :width="120" :height="144" />
@@ -176,7 +175,8 @@ async function save() {
 
 <style scoped>
 .gift-form {
-  border-style: dashed;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
 }
 .photo {

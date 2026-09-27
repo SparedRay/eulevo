@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import LoadingState from '@/components/LoadingState.vue'
 import GiftPhoto from '@/components/GiftPhoto.vue'
 import { useGuestStore } from '@/stores/guest'
 import { partyWhen } from '@/lib/format'
@@ -51,7 +52,7 @@ async function confirm() {
       Voltar à lista
     </RouterLink>
 
-    <p v-if="store.loading" class="muted">Carregando…</p>
+    <LoadingState v-if="store.loading" />
 
     <template v-else-if="!gift">
       <div class="stack" role="alert">

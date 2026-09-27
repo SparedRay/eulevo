@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import LoadingState from '@/components/LoadingState.vue'
 import TileBand from '@/components/TileBand.vue'
 import GiftPhoto from '@/components/GiftPhoto.vue'
 import { useGuestStore } from '@/stores/guest'
@@ -26,7 +27,7 @@ function repeatNote(count: number) {
 <template>
   <TileBand />
   <main class="page">
-    <p v-if="store.loading" class="muted">Carregando a lista…</p>
+    <LoadingState v-if="store.loading" label="Carregando a lista…" />
 
     <template v-else-if="store.notFound">
       <h1>Não encontramos esta lista</h1>

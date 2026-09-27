@@ -11,7 +11,7 @@ const last = lastList()
   <TileBand :height="112" />
   <main class="page">
     <span class="eyebrow">{{ APP_NAME }}</span>
-    <h1>Listas de presentes simples, sem cadastro</h1>
+    <h1>Lista de Presentes</h1>
 
     <section v-if="last" class="card" aria-labelledby="last-title">
       <p class="muted">Você abriu esta lista neste celular:</p>

@@ -28,9 +28,9 @@ src/config.ts          APP_NAME
 src/lib/               supabase client + auth helpers, install.ts (PWA install + service worker registration, production only), lastList.ts, api.ts (typed wrappers for every Supabase call), mock.ts (dev-only demo data, kept per tab in sessionStorage), image.ts (shrink photos before upload), format.ts (pt-BR dates), calendar.ts (.ics), device.ts
 src/stores/guest.ts    guest state: load, 20 s auto-refresh, claim, release
 src/styles/            tokens.css (Azulejo palette) + base.css (.page .btn .card .strip .note .field .check …)
-src/components/        TileBand, GiftPhoto, GiftForm (add/edit gift), SharePanel (copy / WhatsApp / QR via `uqr`), HostNav (Presentes · Quem vai levar o quê · Festa e anfitriões), PartyFields (name/date/time/address)
+src/components/        TileBand, GiftPhoto, GiftForm (add/edit gift), SharePanel (copy / WhatsApp / QR via `uqr`), HostNav (Presentes · Quem vai levar o quê · Festa e anfitriões), PartyFields (name/date/time/address), LoadingState (spinner + "Carregando…"), PasswordField, AccountCard, InstallHint
 src/views/guest/       ListView → ConfirmView → DoneView | TakenView, MineView
-src/views/admin/       LoginView, ListsView (create list), GiftsView, ClaimsView, SettingsView (edit party, co-hosts, invites), InviteView (/admin/convite/:token)
+src/views/admin/       LoginView, ListsView (create list), GiftsView, GiftFormView (add/edit a gift on its own screen), ClaimsView, SettingsView (edit party, co-hosts, invites), InviteView (/admin/convite/:token)
 docs/design.md         visual identity + UX rules — read before touching UI
 ```
 

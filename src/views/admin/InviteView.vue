@@ -2,6 +2,7 @@
 // Opened from a co-host invite link. The host guard has already made the person sign in.
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import LoadingState from '@/components/LoadingState.vue'
 import TileBand from '@/components/TileBand.vue'
 import { acceptInvite, type InviteResult } from '@/lib/api'
 
@@ -35,7 +36,7 @@ onMounted(accept)
       <button class="btn btn--primary" type="button" @click="accept">Tentar de novo</button>
     </template>
 
-    <p v-else-if="!result" class="muted">Abrindo o convite…</p>
+    <LoadingState v-else-if="!result" label="Abrindo o convite…" />
 
     <template v-else-if="result.status === 'ok' || result.status === 'already_host'">
       <h1>{{ result.status === 'ok' ? 'Pronto!' : 'Você já cuida desta lista' }}</h1>
