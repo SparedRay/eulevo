@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
-import { sendLoginLink, signInWithGoogle } from '@/lib/supabase'
+import { googleSignInEnabled, sendLoginLink, signInWithGoogle } from '@/lib/supabase'
 import { MOCK } from '@/config'
 
 const route = useRoute()
@@ -14,6 +14,9 @@ const email = ref('')
 const sending = ref(false)
 const sentTo = ref<string | null>(null)
 const error = ref<string | null>(null)
+/** Hidden until Supabase confirms the Google provider is on, so the button never appears and then fails. */
+const showGoogle = ref(false)
+onMounted(async () => (showGoogle.value = await googleSignInEnabled()))
 
 async function withGoogle() {
   error.value = null
@@ -62,8 +65,10 @@ async function withEmail() {
     </template>
 
     <template v-else>
-      <button class="btn btn--outline" type="button" @click="withGoogle">Continuar com Google</button>
-      <div class="or" aria-hidden="true"><span></span>ou<span></span></div>
+      <template v-if="showGoogle">
+        <button class="btn btn--outline" type="button" @click="withGoogle">Continuar com Google</button>
+        <div class="or" aria-hidden="true"><span></span>ou<span></span></div>
+      </template>
       <form class="stack" @submit.prevent="withEmail">
         <label class="field">
           Seu e-mail

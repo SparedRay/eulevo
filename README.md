@@ -42,6 +42,7 @@ npm run dev:mock             # no Supabase needed: demo list at /l/demo, host sc
 4. **Host sign-in:**
    - Email links work out of the box (*Email* provider).
    - Google (optional): create an OAuth client in Google Cloud Console, then paste its ID and secret under *Providers → Google*.
+     The "Continuar com Google" button only appears once this provider is turned on.
 5. **Redirect URLs:** *Authentication → URL Configuration*
    - Site URL: your Cloudflare address (see step 2 below)
    - Additional redirect URLs: `http://localhost:5173/**` and `https://<your Cloudflare address>/**`

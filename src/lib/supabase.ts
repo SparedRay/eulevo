@@ -36,6 +36,21 @@ export async function isHostSignedIn(): Promise<boolean> {
   return !!user && !user.is_anonymous
 }
 
+let googleCheck: Promise<boolean> | undefined
+
+/**
+ * True when the Google provider is turned on in Supabase (Authentication → Sign In / Providers).
+ * Reads the public auth settings once per page load; any failure counts as "off", since email always works.
+ */
+export function googleSignInEnabled(): Promise<boolean> {
+  if (MOCK) return Promise.resolve(true)
+  googleCheck ??= fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((s) => s?.external?.google === true)
+    .catch(() => false)
+  return googleCheck
+}
+
 /** Starts Google sign-in; the browser leaves the app and comes back to `redirectTo`. Returns false on failure. */
 export async function signInWithGoogle(redirectTo: string): Promise<boolean> {
   if (MOCK) {
