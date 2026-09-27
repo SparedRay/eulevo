@@ -79,7 +79,7 @@ docs/design.md         visual identity + UX rules — read before touching UI
 1. ~~Mock mode~~ ✅
 2. ~~Host gifts screen~~ ✅ (replaced or removed photos are deleted from Storage after the save; archived gifts keep theirs)
 3. ~~Host claims screen~~ ✅ (ClaimsView fills `area_label` via Nominatim reverse lookup, 1 request/s, from the host's browser; "Ver no mapa" link until then or if it fails)
-4. Supabase setup: paste `docs/email-templates/` into Authentication → Emails → Templates; set up custom SMTP (README "Your own email sender") to lift the ~2 emails/hour limit; run the migrations `20260927120000_cohost_invites.sql` `20260927180000_host_tools.sql` and `20260928000000_live_updates.sql`; turn on "Allow new users to sign up" (off on 2026-09-27, which blocks anonymous guests and new host emails); redirect URLs include `http://localhost:5173/**`.
+4. Supabase setup: all migrations up to `20260928000000_live_updates.sql` are applied (run by hand in the SQL Editor on 2026-09-27). Still to do: mark them in the CLI history with `npx supabase migration repair --status applied 20260927000000 20260927120000 20260927180000 20260928000000` (after `supabase login` + `link`), so `supabase db push` only runs new files; paste `docs/email-templates/` into Authentication → Emails → Templates; set up custom SMTP (README "Your own email sender"); schedule the `pg_cron` location purge; redirect URLs include `http://localhost:5173/**`.
 5. Test everything against real data (walkthrough in the chat of 2026-09-27: host sign-in → gifts → two guest browsers → claims → Liberar → invite a co-host).
 
 ## Conventions
