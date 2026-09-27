@@ -10,11 +10,11 @@ const route = useRoute()
 const store = useGuestStore()
 const token = route.params.token as string
 
-onMounted(async () => {
-  await store.load(token)
-  store.startAutoRefresh()
+onMounted(() => {
+  store.startLive()
+  store.load(token)
 })
-onUnmounted(() => store.stopAutoRefresh())
+onUnmounted(() => store.stopLive())
 
 function repeatNote(count: number) {
   if (count === 0) return 'Várias pessoas podem levar este presente.'
@@ -69,7 +69,7 @@ function repeatNote(count: number) {
           </div>
         </div>
         <RouterLink class="btn btn--primary" :to="{ name: 'guest-confirm', params: { token, giftId: gift.id } }">
-          {{ gift.repeatable && gift.claim_count > 0 ? 'Eu também levo' : 'Eu levo este' }}
+          {{ gift.repeatable && gift.claim_count > 0 ? 'Quero levar também' : 'Quero levar este' }}
         </RouterLink>
       </article>
     </template>

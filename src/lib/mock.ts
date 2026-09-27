@@ -6,7 +6,8 @@
  * Demo list: /l/demo (hosts: /admin → "Casa Nova da Ana e do Rui").
  * - "Jogo de panelas" is already claimed by someone else, so guests don't see it.
  * - "Panos de prato" is repeatable without a limit; "Taças de vinho" allows 2 people.
- * - "Toalhas de banho" gets taken by someone else the moment you confirm it, to show the "taken" screen.
+ * - "Toalhas de banho" gets taken by someone else ~12 s after the list opens (open screens update live), or the
+ *   moment you confirm it if you're quicker, to show both "taken" paths.
  * - Email code: 123456. Password sign-in: any email with the password eulevo2026 (change it under "Sua conta").
  * - Co-hosts: you own the demo list with rui@exemplo.com. /admin/convite/convite-demo makes you a co-host of
  *   Carla's list; /admin/convite/convite-usado and /admin/convite/convite-vencido show the error screens.
@@ -162,7 +163,7 @@ const gifts: MockGift[] = [
     {
       id: RACE_GIFT,
       title: 'Toalhas de banho',
-      description: 'Teste: outra pessoa escolhe este presente um instante antes de você confirmar.',
+      description: 'Teste: outra pessoa escolhe este presente uns 12 segundos depois que a lista abre, ou no instante em que você confirmar.',
     },
     5,
   ),
@@ -256,6 +257,19 @@ export function resetMock() {
   location.reload()
 }
 
+// Stand-in for the Realtime "list changed" broadcast. Every write notifies the list it touched.
+const listeners = new Map<string, Set<() => void>>()
+
+export function onListChanged(listId: string, fn: () => void): () => void {
+  if (!listeners.has(listId)) listeners.set(listId, new Set())
+  listeners.get(listId)!.add(fn)
+  return () => listeners.get(listId)?.delete(fn)
+}
+
+function notify(listId: string) {
+  listeners.get(listId)?.forEach((fn) => fn())
+}
+
 /** Pretend network delay, so loading states show up. */
 function later<T>(value: () => T, ms = 250): Promise<T> {
   return new Promise((resolve, reject) =>
@@ -322,10 +336,14 @@ export function mockSignOut() {
 // Guest RPCs
 // ---------------------------------------------------------------------------
 
+/** Once per page load: the race gift gets taken by someone else ~12 s after the demo list first opens. */
+let raceTimer: ReturnType<typeof setTimeout> | undefined
+
 export function getList(token: string): Promise<GuestList | null> {
   return later(() => {
     const l = lists.find((x) => x.share_token === token)
     if (!l) return null
+    if (l.id === 'list-demo' && !raceTimer) raceTimer = setTimeout(someoneElseTakesRaceGift, 12_000)
 
     const visible = gifts
       .filter((g) => g.list_id === l.id && !g.archived)
@@ -386,7 +404,7 @@ export function claimGift(
     if (active.some((c) => c.device_id === ME)) return 'already_yours'
 
     if (giftId === RACE_GIFT && active.length === 0) {
-      claims.push(claim({ gift_id: giftId, device_id: '9b4e5c77-0000-4000-8000-00000000000f', device_summary: 'iPhone' }))
+      someoneElseTakesRaceGift()
       return 'taken'
     }
 
@@ -404,8 +422,17 @@ export function claimGift(
         device_summary: opts.device?.slice(0, 60) ?? null,
       }),
     )
+    notify(g.list_id)
     return 'ok'
   }, 600)
+}
+
+/** Another guest claims the race gift (if it's still free) and every open screen hears about it. */
+function someoneElseTakesRaceGift() {
+  if (activeClaims(RACE_GIFT).length) return
+  claims.push(claim({ gift_id: RACE_GIFT, device_id: '9b4e5c77-0000-4000-8000-00000000000f', device_summary: 'iPhone' }))
+  persist()
+  notify('list-demo')
 }
 
 /** Guests release their own claims; the mock host is admin of every list, so it may release any. */
@@ -414,6 +441,7 @@ export function releaseClaim(claimId: string): Promise<boolean> {
     const c = claims.find((x) => x.id === claimId && !x.released_at)
     if (!c || (c.device_id !== ME && !hostSignedIn)) return false
     c.released_at = new Date().toISOString()
+    notify(c.list_id)
     return true
   })
 }
@@ -463,6 +491,7 @@ export function hostGifts(listId: string): Promise<HostGift[]> {
 
 export function createGift(listId: string, input: GiftInput): Promise<void> {
   return later(() => {
+    notify(listId)
     gifts.push({
       ...copy(input),
       id: newId('g'),
@@ -480,6 +509,7 @@ export function updateGift(id: string, input: GiftInput): Promise<void> {
     const g = gifts.find((x) => x.id === id)
     if (!g) throw new Error('gift not found')
     Object.assign(g, copy(input))
+    notify(g.list_id)
   })
 }
 
@@ -488,6 +518,7 @@ export function setGiftArchived(id: string, archived: boolean): Promise<void> {
     const g = gifts.find((x) => x.id === id)
     if (!g) throw new Error('gift not found')
     g.archived = archived
+    notify(g.list_id)
   })
 }
 
@@ -533,6 +564,7 @@ export function updateList(id: string, input: NewList): Promise<void> {
     const l = lists.find((x) => x.id === id && isAdmin(x.id))
     if (!l) throw new Error('list not found')
     Object.assign(l, copy(input))
+    notify(id)
   })
 }
 
@@ -626,6 +658,7 @@ export function deleteList(listId: string): Promise<void> {
     keep(admins, (a) => a.list_id !== listId)
     keep(invites, (i) => i.list_id !== listId)
     keep(lists, (l) => l.id !== listId)
+    notify(listId)
   })
 }
 

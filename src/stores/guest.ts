@@ -10,8 +10,7 @@ import {
 } from '@/lib/api'
 import { deviceSummary, roughLocation } from '@/lib/device'
 import { rememberList } from '@/lib/lastList'
-
-const REFRESH_MS = 20_000
+import { watchList } from '@/lib/live'
 
 export const useGuestStore = defineStore('guest', () => {
   const token = ref<string | null>(null)
@@ -19,7 +18,6 @@ export const useGuestStore = defineStore('guest', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const notFound = ref(false)
-  let timer: ReturnType<typeof setInterval> | undefined
 
   const list = computed(() => data.value?.list ?? null)
   const mine = computed(() => data.value?.mine ?? [])
@@ -42,6 +40,7 @@ export const useGuestStore = defineStore('guest', () => {
       notFound.value = res === null
       data.value = res
       if (res) rememberList({ token: t, title: res.list.title })
+      syncLive()
     } catch (e) {
       // A failed background refresh keeps what's on screen; the next one will try again.
       if (!quiet) error.value = 'Não conseguimos carregar a lista. Confira sua internet e tente de novo.'
@@ -51,17 +50,31 @@ export const useGuestStore = defineStore('guest', () => {
     }
   }
 
-  /** Keeps the list fresh so gifts taken by others disappear without reloading. */
-  function startAutoRefresh() {
-    stopAutoRefresh()
-    timer = setInterval(() => {
-      if (token.value && document.visibilityState === 'visible') load(token.value, { quiet: true })
-    }, REFRESH_MS)
+  // Live updates, shared by the guest screens that show the list (list, confirm, mine): each calls
+  // startLive() when it opens and stopLive() when it closes, so moving between them keeps one connection.
+  let liveUsers = 0
+  let watching: { listId: string; stop: () => void } | null = null
+
+  /** (Re)connects to the loaded list while any screen needs it. */
+  function syncLive() {
+    const listId = liveUsers > 0 ? (data.value?.list.id ?? null) : null
+    if (watching?.listId === listId) return
+    watching?.stop()
+    watching = listId
+      ? { listId, stop: watchList(listId, () => token.value && load(token.value, { quiet: true })) }
+      : null
   }
 
-  function stopAutoRefresh() {
-    if (timer) clearInterval(timer)
-    timer = undefined
+  /** Keeps the list fresh so gifts others choose disappear right away, even on the confirm screen. */
+  function startLive() {
+    liveUsers++
+    syncLive()
+  }
+
+  function stopLive() {
+    liveUsers = Math.max(0, liveUsers - 1)
+    // Let the next screen's startLive() run first, so switching screens doesn't reconnect.
+    setTimeout(syncLive)
   }
 
   async function claim(giftId: string, shareLocation: boolean): Promise<ClaimResult> {
@@ -91,8 +104,8 @@ export const useGuestStore = defineStore('guest', () => {
     notFound,
     giftById,
     load,
-    startAutoRefresh,
-    stopAutoRefresh,
+    startLive,
+    stopLive,
     claim,
     release,
   }

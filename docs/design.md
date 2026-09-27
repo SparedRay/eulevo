@@ -30,8 +30,9 @@ Visual identity **Azulejo** (option C·4 on the design canvas "Housewarming Gift
 ## UX rules (older guests and hosts must manage alone)
 
 1. One column on phones. No filters, tabs, swipes or hidden gestures.
-2. Buttons are at least 56px tall and always labelled in words: "Eu levo este", "Sim, eu levo", "Não, voltar". No icon-only controls.
+2. Buttons are at least 56px tall and always labelled in words: "Quero levar este", "Sim, confirmo que levo", "Não, voltar para a lista". No icon-only controls.
 3. Nothing is saved without a confirm step with explicit Sim / Não. Releasing a gift also asks "Tem certeza?".
+   The first tap must not sound final: it says what the guest *wants* ("Quero levar este"), and the confirm screen opens with "Falta confirmar" and asks "Você confirma…?". Early testers read "Eu levo este" + "Você escolheu" as already done.
 4. The party date and time are repeated as a plain sentence on every guest screen.
 5. "Você vai levar N presentes" is always at the top of the list once the guest has picked something.
 6. Sharing location is one checkbox, off by default. The browser permission prompt only appears after it is ticked.

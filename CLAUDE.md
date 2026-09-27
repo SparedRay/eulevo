@@ -1,6 +1,6 @@
 # Eu Levo — notes for Claude
 
-Gift-list web app for a housewarming ("chá de casa nova"). Hosts create a list and share one link; guests open it, tap **"Eu levo este"**, confirm, and their phone remembers what they're bringing. No names, no guest accounts. Users are mostly **Brazilian Portuguese speakers, many of them older**, so simplicity beats cleverness every time.
+Gift-list web app for a housewarming ("chá de casa nova"). Hosts create a list and share one link; guests open it, tap **"Quero levar este"**, confirm ("Sim, confirmo que levo"), and their phone remembers what they're bringing. No names, no guest accounts. Users are mostly **Brazilian Portuguese speakers, many of them older**, so simplicity beats cleverness every time.
 
 ## Commands
 
@@ -46,7 +46,7 @@ docs/design.md         visual identity + UX rules — read before touching UI
 
 ## UI rules (Azulejo, for older users)
 
-- **All UI copy is Brazilian Portuguese.** Plain, warm, no jargon ("Eu levo este", "Sim, eu levo", "Não, voltar", "Não posso levar").
+- **All UI copy is Brazilian Portuguese.** Plain, warm, no jargon ("Quero levar este", "Sim, confirmo que levo", "Não, voltar para a lista", "Não posso levar"). The first tap must never sound final (see docs/design.md rule 3).
 - One column on phones. No filters, tabs, swipes or hidden gestures on guest screens.
 - Buttons ≥ 56px (`var(--tap)`), labelled in words; icon-only buttons are not allowed. Body text 18px, never below 16px.
 - Every save goes through a confirm step with explicit Sim / Não, and releasing a gift also asks "Tem certeza?".
@@ -63,6 +63,7 @@ docs/design.md         visual identity + UX rules — read before touching UI
 | Setup, schema, RLS, RPCs | ✅ |
 | Mock mode (`npm run dev:mock`) | ✅ |
 | Guest flow (list, confirm, done, taken, mine, release, .ics) | ✅ first version, **untested against real data** |
+| Live updates: `watchList()` in `src/lib/live.ts` (Realtime broadcast `list:<id>` from triggers + refresh on return + 30 s poll); guest screens share one via `store.startLive()/stopLive()` | ✅ needs migration `20260928000000_live_updates.sql` |
 | Host sign-in + create list | ✅ first version |
 | Host gifts screen (add/edit gift, photo upload, share: copy / WhatsApp / QR) | ✅ first version, **untested against real data** |
 | Host "Quem vai levar o quê" (claims + "Liberar") | ✅ first version, **untested against real data** |
@@ -77,7 +78,7 @@ docs/design.md         visual identity + UX rules — read before touching UI
 1. ~~Mock mode~~ ✅
 2. ~~Host gifts screen~~ ✅ (replaced or removed photos are deleted from Storage after the save; archived gifts keep theirs)
 3. ~~Host claims screen~~ ✅ (ClaimsView fills `area_label` via Nominatim reverse lookup, 1 request/s, from the host's browser; "Ver no mapa" link until then or if it fails)
-4. Supabase setup: paste `docs/email-templates/` into Authentication → Emails → Templates; set up custom SMTP (README "Your own email sender") to lift the ~2 emails/hour limit; run the migrations `20260927120000_cohost_invites.sql` and `20260927180000_host_tools.sql`; turn on "Allow new users to sign up" (off on 2026-09-27, which blocks anonymous guests and new host emails); redirect URLs include `http://localhost:5173/**`.
+4. Supabase setup: paste `docs/email-templates/` into Authentication → Emails → Templates; set up custom SMTP (README "Your own email sender") to lift the ~2 emails/hour limit; run the migrations `20260927120000_cohost_invites.sql` `20260927180000_host_tools.sql` and `20260928000000_live_updates.sql`; turn on "Allow new users to sign up" (off on 2026-09-27, which blocks anonymous guests and new host emails); redirect URLs include `http://localhost:5173/**`.
 5. Test everything against real data (walkthrough in the chat of 2026-09-27: host sign-in → gifts → two guest browsers → claims → Liberar → invite a co-host).
 
 ## Conventions

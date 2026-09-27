@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import GiftPhoto from '@/components/GiftPhoto.vue'
 import { useGuestStore } from '@/stores/guest'
@@ -16,8 +16,10 @@ const releasing = ref(false)
 const releaseFailed = ref(false)
 
 onMounted(async () => {
+  store.startLive()
   if (!store.data || store.token !== token) await store.load(token)
 })
+onUnmounted(() => store.stopLive())
 
 function whoElse(others: number) {
   if (others === 0) return 'Só você'

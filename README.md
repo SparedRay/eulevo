@@ -1,6 +1,6 @@
 # Eu Levo
 
-Listas de presentes simples, sem cadastro. Hosts create a gift list and share one link; guests open it, pick a gift with **"Eu levo este"**, and their phone remembers what they're bringing. No names, no guest accounts.
+Listas de presentes simples, sem cadastro. Hosts create a gift list and share one link; guests open it, pick a gift with **"Quero levar este"**, confirm it, and their phone remembers what they're bringing. No names, no guest accounts.
 
 Built to be usable by older relatives: one column, big text, big buttons labelled in words, a confirm step before anything is saved.
 
@@ -24,6 +24,7 @@ All screens are built. Everything has been clicked through in mock mode (`npm ru
 | Hosts | Edit party name, date, time and address; invite a co-host by link | ✅ first version |
 | Launch | Supabase settings + second migration, then a full test with real data | ⏳ next |
 | Privacy | Daily job that deletes guest locations 7 days after the party (`pg_cron`) | ⏳ not scheduled |
+| Live | Screens update by themselves when someone picks, frees or edits a gift (Supabase Realtime), incl. the confirm screen ("Alguém acabou de escolher…") | ✅ first version |
 | Polish | Page titles, WhatsApp preview text, share shortcut on phones, gentler error handling | ✅ first version |
 | Install | Add to home screen (PWA): app icon, opens offline, hosts get an install card, the home page reopens the last list | ✅ first version |
 
@@ -43,7 +44,7 @@ npm run dev:mock             # no Supabase needed: demo list at /l/demo, host sc
 ### 1. Supabase (database, login, photos)
 
 1. Create a free project at <https://supabase.com/dashboard> (region: São Paulo).
-2. **Database:** open *SQL Editor* and run each file in `supabase/migrations/` in name order (`20260927000000_init.sql`, `20260927120000_cohost_invites.sql`, `20260927180000_host_tools.sql`). Each later file only adds to the ones before it.
+2. **Database:** open *SQL Editor* and run each file in `supabase/migrations/` in name order (`20260927000000_init.sql`, `20260927120000_cohost_invites.sql`, `20260927180000_host_tools.sql`, `20260928000000_live_updates.sql`). Each later file only adds to the ones before it.
    (Or with the CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`.)
 3. **Guests without accounts:** *Authentication → Sign In / Providers →* turn on **Allow anonymous sign-ins** and **Allow new users to sign up**. Both are needed: every guest's anonymous session counts as a new sign-up, and so does a host's or co-host's first email sign-in.
 4. **Host sign-in:**
@@ -97,6 +98,8 @@ The repo deploys as a Cloudflare Worker that serves static files. `wrangler.json
 - `get_list(token)`: the list, the gifts that still have room, and *their own* claims (never other guests').
 - `claim_gift(gift, lat?, lng?, device?)`: locks the gift row, so two people tapping at once can't both win. Returns `ok`, `taken`, `already_yours` or `not_found`.
 - `release_claim(claim)`: "Não posso levar". Guests can release their own claims; hosts can release any claim in their lists.
+
+**Live updates:** triggers on `lists`, `gifts` and `claims` broadcast an empty "changed" message on the Realtime topic `list:<list id>` (`20260928000000_live_updates.sql`). Open screens (guest list, confirm, "what I'm bringing", host gifts and claims) refetch through the same functions as before, so no data travels over the channel. They also refresh when the tab or app comes back into view, and every 30 s as a backup. Needs *Realtime → Settings → Allow public access* (on by default).
 
 **Repeatable gifts:** `repeatable = true` with `max_claims = null` means unlimited; with a number it closes at that count. One-time gifts disappear from the list once claimed.
 

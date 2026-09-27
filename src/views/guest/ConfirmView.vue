@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GiftPhoto from '@/components/GiftPhoto.vue'
 import { useGuestStore } from '@/stores/guest'
@@ -15,9 +15,12 @@ const shareLocation = ref(false)
 const saving = ref(false)
 const failed = ref(false)
 
+// Live: if another guest takes this gift while it's open here, the screen says so right away.
 onMounted(async () => {
+  store.startLive()
   if (!store.data || store.token !== token) await store.load(token)
 })
+onUnmounted(() => store.stopLive())
 
 const gift = computed(() => store.giftById(giftId))
 const shopLink = computed(() => gift.value?.links[0]?.url ?? null)
@@ -51,22 +54,26 @@ async function confirm() {
     <p v-if="store.loading" class="muted">Carregando…</p>
 
     <template v-else-if="!gift">
-      <h1>Este presente não está mais disponível</h1>
+      <div class="stack" role="alert">
+        <h1>Alguém acabou de escolher este presente</h1>
+        <p class="muted">Outra pessoa escolheu antes de você confirmar. Nada foi salvo no seu nome.</p>
+      </div>
       <RouterLink class="btn btn--primary" :to="{ name: 'guest-list', params: { token } }">Escolher outro presente</RouterLink>
     </template>
 
     <template v-else>
       <GiftPhoto class="hero" :images="gift.images" :alt="gift.title" :width="350" :height="180" />
       <div class="stack">
-        <span class="muted">Você escolheu</span>
+        <span class="eyebrow">Falta confirmar</span>
         <h1>{{ gift.title }}</h1>
         <p v-if="gift.description" class="muted">{{ gift.description }}</p>
         <a v-if="shopLink" class="shop" :href="shopLink" target="_blank" rel="noopener">Ver um exemplo na loja ↗</a>
       </div>
 
-      <p class="note">
-        Por favor, leve no <b>{{ partyWhen(store.list?.event_at ?? null) }}</b>.
-      </p>
+      <div class="note stack question">
+        <p class="big"><b>Você confirma que vai levar este presente?</b></p>
+        <p>Se sim, leve no <b>{{ partyWhen(store.list?.event_at ?? null) }}</b>.</p>
+      </div>
 
       <label class="check">
         <input v-model="shareLocation" type="checkbox" />
@@ -77,10 +84,13 @@ async function confirm() {
 
       <div class="stack push-bottom">
         <button class="btn btn--primary" type="button" :disabled="saving" @click="confirm">
-          {{ saving ? 'Salvando…' : 'Sim, eu levo' }}
+          {{ saving ? 'Salvando…' : 'Sim, confirmo que levo' }}
         </button>
-        <RouterLink class="btn btn--outline" :to="{ name: 'guest-list', params: { token } }">Não, voltar</RouterLink>
-        <p class="small muted center">Não pedimos seu nome. Este celular vai lembrar da sua escolha.</p>
+        <RouterLink class="btn btn--outline" :to="{ name: 'guest-list', params: { token } }">Não, voltar para a lista</RouterLink>
+        <p class="small muted center">
+          Só fica salvo quando você tocar em <b>Sim, confirmo que levo</b>. Não pedimos seu nome: este celular vai
+          lembrar da sua escolha.
+        </p>
       </div>
     </template>
   </main>
@@ -90,6 +100,12 @@ async function confirm() {
 .hero {
   width: 100% !important;
   border-radius: 999px 999px 16px 16px !important;
+}
+.question {
+  gap: 6px;
+}
+.big {
+  font-size: 20px;
 }
 .shop {
   min-height: 44px;

@@ -17,6 +17,7 @@ import {
   type HostList,
 } from '@/lib/api'
 import { shortDateTime } from '@/lib/format'
+import { watchList } from '@/lib/live'
 
 const route = useRoute()
 const listId = route.params.id as string
@@ -47,8 +48,9 @@ const position = computed(() => {
   return pos
 })
 
-async function load() {
-  loadFailed.value = false
+/** `quiet`: a background refresh. If it fails, keep what's on screen; the next one will try again. */
+async function load(quiet = false) {
+  if (!quiet) loadFailed.value = false
   try {
     const [l, g, c] = await Promise.all([fetchHostList(listId), fetchHostGifts(listId), fetchHostClaims(listId)])
     list.value = l
@@ -56,19 +58,28 @@ async function load() {
     claims.value = c
   } catch (e) {
     console.error(e)
-    loadFailed.value = true
+    if (!quiet) loadFailed.value = true
   } finally {
     loading.value = false
   }
 }
+// Live: new claims appear (and released ones go) while the host is looking.
+let stopWatching = () => {}
 onMounted(async () => {
   await load()
   fillAreas()
+  stopWatching = watchList(listId, async () => {
+    await load(true)
+    fillAreas()
+  })
 })
 
 let leaving = false
 let filling = false
-onUnmounted(() => (leaving = true))
+onUnmounted(() => {
+  leaving = true
+  stopWatching()
+})
 
 /** Looks up "Perto de …" for shared locations that don't have it yet, one per second, and saves it. */
 async function fillAreas() {
@@ -138,7 +149,7 @@ async function release(c: HostClaim) {
     <template v-else-if="loadFailed">
       <h1>Algo deu errado</h1>
       <p class="muted">Não conseguimos carregar esta lista. Confira sua internet e tente de novo.</p>
-      <button class="btn btn--primary btn--auto" type="button" @click="load">Tentar de novo</button>
+      <button class="btn btn--primary btn--auto" type="button" @click="load()">Tentar de novo</button>
     </template>
 
     <template v-else-if="!list">

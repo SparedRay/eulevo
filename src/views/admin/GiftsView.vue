@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Host · Your gift list: gifts with their status in words, add / edit / remove, and the share panel.
 // Design reference: canvas page "C·4 Azulejo — final flow" → "Host · Your gift list" and "Host · Add a gift".
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import TileBand from '@/components/TileBand.vue'
 import GiftPhoto from '@/components/GiftPhoto.vue'
@@ -10,6 +10,7 @@ import SharePanel from '@/components/SharePanel.vue'
 import HostNav from '@/components/HostNav.vue'
 import { fetchHostGifts, fetchHostList, setGiftArchived, type HostGift, type HostList } from '@/lib/api'
 import { partyWhen } from '@/lib/format'
+import { watchList } from '@/lib/live'
 
 const route = useRoute()
 const listId = route.params.id as string
@@ -33,20 +34,27 @@ const archived = computed(() => gifts.value.filter((g) => g.archived))
 const claimCount = computed(() => gifts.value.reduce((n, g) => n + g.claim_count, 0))
 const shareUrl = computed(() => (list.value ? `${window.location.origin}/l/${list.value.share_token}` : ''))
 
-async function load() {
-  loadFailed.value = false
+/** `quiet`: a background refresh. If it fails, keep what's on screen; the next one will try again. */
+async function load(quiet = false) {
+  if (!quiet) loadFailed.value = false
   try {
     const [l, g] = await Promise.all([fetchHostList(listId), fetchHostGifts(listId)])
     list.value = l
     gifts.value = g
   } catch (e) {
     console.error(e)
-    loadFailed.value = true
+    if (!quiet) loadFailed.value = true
   } finally {
     loading.value = false
   }
 }
-onMounted(load)
+// Live: claim counts and other hosts' edits show up without reloading.
+let stopWatching = () => {}
+onMounted(async () => {
+  await load()
+  stopWatching = watchList(listId, () => load(true))
+})
+onUnmounted(() => stopWatching())
 
 function peopleBringing(n: number) {
   return n === 1 ? '1 pessoa já vai levar' : `${n} pessoas já vão levar`
@@ -118,7 +126,7 @@ async function archive(g: HostGift, value: boolean) {
     <template v-else-if="loadFailed">
       <h1>Algo deu errado</h1>
       <p class="muted">Não conseguimos carregar esta lista. Confira sua internet e tente de novo.</p>
-      <button class="btn btn--primary btn--auto" type="button" @click="load">Tentar de novo</button>
+      <button class="btn btn--primary btn--auto" type="button" @click="load()">Tentar de novo</button>
     </template>
 
     <template v-else-if="!list">
