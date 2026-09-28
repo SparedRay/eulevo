@@ -6,6 +6,7 @@ import GiftPhoto from '@/components/GiftPhoto.vue'
 import { useGuestStore } from '@/stores/guest'
 import { partyWhen } from '@/lib/format'
 import { downloadCalendarEvent } from '@/lib/calendar'
+import GuestCode from '@/components/GuestCode.vue'
 
 const route = useRoute()
 const store = useGuestStore()
@@ -103,7 +104,8 @@ function addToCalendar() {
       <button v-if="store.mine.length && store.list?.event_at" class="btn btn--primary" type="button" @click="addToCalendar">
         Adicionar à minha agenda
       </button>
-      <p class="small muted center">Salvo só neste celular. Se trocar de celular, fale com os anfitriões.</p>
+      <GuestCode :code="store.myCode" variant="card" />
+      <p class="small muted center">Salvo só neste celular. Se trocar de celular, fale com os anfitriões e diga seu código.</p>
     </div>
   </main>
 </template>

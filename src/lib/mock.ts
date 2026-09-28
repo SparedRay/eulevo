@@ -392,6 +392,17 @@ export function getList(token: string): Promise<GuestList | null> {
   })
 }
 
+/** Mock guest code: 6 digits derived from the device id (random and stored in the real app). */
+export function mockGuestCode(deviceId: string): string {
+  let h = 0
+  for (const ch of deviceId) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return String(h % 1_000_000).padStart(6, '0')
+}
+
+export function myGuestCode(): Promise<string | null> {
+  return later(() => mockGuestCode(ME), 100)
+}
+
 export function claimGift(
   giftId: string,
   opts: { lat?: number; lng?: number; device?: string },
@@ -547,6 +558,7 @@ export function hostClaims(listId: string): Promise<HostClaim[]> {
           claimed_at: c.claimed_at,
           device_summary: c.device_summary,
           device_tag: deviceTag(c.device_id),
+          guest_code: mockGuestCode(c.device_id),
           lat: c.lat_rounded,
           lng: c.lng_rounded,
           area_label: c.area_label,

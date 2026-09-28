@@ -36,7 +36,7 @@ Visual identity **Azulejo** (option C·4 on the design canvas "Housewarming Gift
    The first tap must not sound final: it says what the guest *wants* ("Quero levar este"), and the confirm screen opens with "Falta confirmar" and asks "Você confirma…?". Early testers read "Eu levo este" + "Você escolheu" as already done.
 4. The party date and time are repeated as a plain sentence on every guest screen.
 5. "Você vai levar N presentes" is always at the top of the list once the guest has picked something.
-6. No location checkbox: tapping "Sim, confirmo que levo" asks the browser for the rough location, and the browser's own permission prompt is the guest's choice. A "no", or no answer within 12 s, still saves the gift (guests already know about the feature; an extra checkbox confused them).
+6. No location, no names: each phone gets a random **6-digit guest code** ("Seu código neste celular: 482 913"), shown on the list, the thank-you screen and "O que você vai levar". Guests read it out to the hosts, who see and can search the same code in "Quem vai levar o quê". (Location was dropped: the browser prompt confused older guests and ~1 km didn't tell guests apart.)
 7. Repeatable gifts say it in words: "Várias pessoas podem levar. 2 pessoas já vão levar."
 8. Errors say what to do next ("Confira sua internet e tente de novo"), never codes.
 

@@ -53,3 +53,9 @@ export function toTimeInput(iso: string | null): string {
 export function fromDateTimeInputs(date: string, time: string): string | null {
   return date ? new Date(`${date}T${time || '16:00'}`).toISOString() : null
 }
+
+/** "482913" → "482 913": easier to read out loud. */
+export function formatCode(code: string | null | undefined): string {
+  if (!code) return ''
+  return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code
+}

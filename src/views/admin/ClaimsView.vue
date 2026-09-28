@@ -10,14 +10,12 @@ import {
   fetchHostClaims,
   fetchHostGifts,
   fetchHostList,
-  lookupArea,
   releaseClaim,
-  saveAreaLabel,
   type HostClaim,
   type HostGift,
   type HostList,
 } from '@/lib/api'
-import { shortDateTime } from '@/lib/format'
+import { formatCode, shortDateTime } from '@/lib/format'
 import { watchList } from '@/lib/live'
 
 const route = useRoute()
@@ -36,6 +34,16 @@ const confirming = ref<string | null>(null)
 const busy = ref(false)
 
 const giftCount = computed(() => gifts.value.filter((g) => !g.archived).length)
+
+/** "Procurar pelo código": a guest reads their code out, the host types it to see what they chose. */
+const search = ref('')
+const searchDigits = computed(() => search.value.replace(/\D/g, ''))
+const shown = computed(() =>
+  searchDigits.value ? claims.value.filter((c) => (c.guest_code ?? '').includes(searchDigits.value)) : claims.value,
+)
+
+/** The guest's code, or the old short tag for phones that don't have one yet. */
+const codeOf = (c: HostClaim) => (c.guest_code ? formatCode(c.guest_code) : c.device_tag)
 
 /** "1ª pessoa", "2ª pessoa"… for gifts several guests are bringing, counted in the order they chose. */
 const position = computed(() => {
@@ -68,51 +76,14 @@ async function load(quiet = false) {
 let stopWatching = () => {}
 onMounted(async () => {
   await load()
-  fillAreas()
-  stopWatching = watchList(listId, async () => {
-    await load(true)
-    fillAreas()
-  })
+  stopWatching = watchList(listId, () => load(true))
 })
 
-let leaving = false
-let filling = false
-onUnmounted(() => {
-  leaving = true
-  stopWatching()
-})
-
-/** Looks up "Perto de …" for shared locations that don't have it yet, one per second, and saves it. */
-async function fillAreas() {
-  if (filling) return
-  filling = true
-  try {
-    for (const c of claims.value) {
-      if (leaving) return
-      if (c.area_label || c.lat === null || c.lng === null) continue
-      try {
-        const label = await lookupArea(c.lat, c.lng)
-        if (label) {
-          c.area_label = label
-          await saveAreaLabel(c.id, label)
-        }
-      } catch (e) {
-        console.error(e) // keep the "Ver no mapa" link for this one
-      }
-      await new Promise((r) => setTimeout(r, 1100))
-    }
-  } finally {
-    filling = false
-  }
-}
+onUnmounted(() => stopWatching())
 
 function when(iso: string) {
   const s = shortDateTime(iso)
   return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-function mapUrl(c: HostClaim) {
-  return `https://www.openstreetmap.org/?mlat=${c.lat}&mlon=${c.lng}#map=14/${c.lat}/${c.lng}`
 }
 
 function ask(id: string) {
@@ -172,9 +143,9 @@ async function release(c: HostClaim) {
           <path d="M8 10V7a4 4 0 0 1 8 0v3" />
         </svg>
         <p>
-          Os convidados não dão o nome. Você vê <b>qual celular</b> escolheu cada presente (o mesmo código quer dizer o
-          mesmo celular) e, só se a pessoa deixou, <b>mais ou menos onde</b> ela estava. As localizações são apagadas
-          uma semana depois da festa.
+          Os convidados não dão o nome. Cada celular tem um <b>código de 6 números</b>, que o convidado também vê na
+          tela dele. O mesmo código quer dizer o mesmo celular. Se alguém falar com você sobre um presente, peça o
+          código e procure aqui.
         </p>
       </div>
 
@@ -186,28 +157,30 @@ async function release(c: HostClaim) {
       </p>
 
       <template v-else>
-        <div class="row head" aria-hidden="true">
-          <span>Presente</span><span>Escolhido</span><span>Celular</span><span>Mais ou menos onde</span><span></span>
+        <label class="field search">
+          Procurar pelo código
+          <input v-model="search" inputmode="numeric" autocomplete="off" placeholder="Ex.: 482 913" />
+        </label>
+
+        <p v-if="!shown.length" class="note">
+          Nenhum presente com esse código. Confira os números com o convidado.
+        </p>
+
+        <div v-else class="row head" aria-hidden="true">
+          <span>Presente</span><span>Escolhido</span><span>Código do convidado</span><span></span>
         </div>
 
         <ul class="rows">
-          <li v-for="c in claims" :key="c.id" class="row card">
+          <li v-for="c in shown" :key="c.id" class="row card">
             <span class="gift display">
               {{ c.gift_title }}
               <span v-if="position.get(c.id)" class="nth">({{ position.get(c.id) }}ª pessoa)</span>
             </span>
             <span><span class="label">Escolhido: </span>{{ when(c.claimed_at) }}</span>
             <span>
-              <span class="label">Celular: </span>{{ c.device_summary ?? 'Celular' }} ·
-              <b class="tag">{{ c.device_tag }}</b>
-            </span>
-            <span>
-              <span class="label">Mais ou menos onde: </span>
-              <template v-if="c.area_label">{{ c.area_label }}</template>
-              <a v-else-if="c.lat !== null && c.lng !== null" :href="mapUrl(c)" target="_blank" rel="noopener">
-                Ver no mapa ↗
-              </a>
-              <span v-else class="muted">Não compartilhou</span>
+              <span class="label">Código do convidado: </span>
+              <b class="tag">{{ codeOf(c) }}</b>
+              <span v-if="c.device_summary" class="muted"> · {{ c.device_summary }}</span>
             </span>
 
             <div v-if="confirming === c.id" class="confirm stack">
@@ -269,6 +242,13 @@ async function release(c: HostClaim) {
 }
 .tag {
   color: var(--cobalt);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.search {
+  max-width: 360px;
 }
 .label {
   font-weight: 700;
@@ -289,7 +269,7 @@ async function release(c: HostClaim) {
 @media (min-width: 900px) {
   .row {
     display: grid;
-    grid-template-columns: 2.2fr 1.6fr 1.6fr 1.6fr 150px;
+    grid-template-columns: 2.2fr 1.4fr 1.8fr 150px;
     column-gap: 16px;
     align-items: center;
     padding: 8px 18px;

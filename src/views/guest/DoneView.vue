@@ -5,6 +5,7 @@ import TileBand from '@/components/TileBand.vue'
 import { useGuestStore } from '@/stores/guest'
 import { partyWhen } from '@/lib/format'
 import { downloadCalendarEvent } from '@/lib/calendar'
+import GuestCode from '@/components/GuestCode.vue'
 
 const route = useRoute()
 const store = useGuestStore()
@@ -46,6 +47,8 @@ function addToCalendar() {
       <p><b>Quando:</b> {{ partyWhen(store.list?.event_at ?? null) }}</p>
       <p v-if="store.list?.address"><b>Onde:</b> {{ store.list.address }}</p>
     </div>
+
+    <GuestCode :code="store.myCode" variant="card" />
 
     <div class="stack push-bottom">
       <button v-if="store.list?.event_at" class="btn btn--primary" type="button" @click="addToCalendar">

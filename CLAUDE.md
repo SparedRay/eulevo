@@ -28,7 +28,7 @@ src/config.ts          APP_NAME
 src/lib/               supabase client + auth helpers, install.ts (PWA install + service worker registration, production only), lastList.ts, api.ts (typed wrappers for every Supabase call), mock.ts (dev-only demo data, kept per tab in sessionStorage), image.ts (shrink photos before upload), format.ts (pt-BR dates), calendar.ts (.ics), device.ts
 src/stores/guest.ts    guest state: load, 20 s auto-refresh, claim, release
 src/styles/            tokens.css (Azulejo palette) + base.css (.page .btn .card .strip .note .field .check …)
-src/components/        TileBand, GiftPhoto, GiftForm (add/edit gift), SharePanel (copy / WhatsApp / QR via `uqr`), HostNav (Presentes · Quem vai levar o quê · Festa e anfitriões), PartyFields (name/date/time/address), LoadingState (spinner + "Carregando…"), PasswordField, AccountCard, InstallHint
+src/components/        TileBand, GiftPhoto, GiftForm (add/edit gift), SharePanel (copy / WhatsApp / QR via `uqr`), HostNav (Presentes · Quem vai levar o quê · Festa e anfitriões), PartyFields (name/date/time/address), LoadingState (spinner + "Carregando…"), PasswordField, AccountCard, InstallHint, GuestCode (this phone's 6-digit code)
 src/views/guest/       ListView → ConfirmView → DoneView | TakenView, MineView
 src/views/admin/       LoginView, ListsView (create list), GiftsView, GiftFormView (add/edit a gift on its own screen), ClaimsView, SettingsView (edit party, co-hosts, invites), InviteView (/admin/convite/:token)
 docs/design.md         visual identity + UX rules — read before touching UI
@@ -40,7 +40,7 @@ docs/design.md         visual identity + UX rules — read before touching UI
 - `claim_gift` locks the gift row (`FOR UPDATE`) so two guests can't claim the same one-time gift. Returns `ok | taken | already_yours | not_found`.
 - A non-repeatable gift disappears from the list once claimed. A repeatable gift stays until `max_claims` is reached (null = unlimited).
 - **Hosts** are non-anonymous users (Google, email link, the email's code via `verifyOtp` — needs the templates in `docs/email-templates/` pasted into Supabase — or email + an optional password set under "Sua conta" via `updateUser`). `is_host()` and `is_list_admin(list_id)` gate everything through RLS. The list creator is added to `list_admins` by a trigger. Co-hosts join through one-time invite links (`list_invites`, 7 days, owner-only) accepted by `accept_invite(token)`; `list_hosts(list)` returns hosts' emails. Hosts can update only `title, event_at, address, theme` on `lists` and only `area_label` on `claims` (column grants), so a co-host can't take over `owner_id`; ownership moves only through `transfer_ownership(list, user)`. Co-hosts can leave (`list_admins` delete of their own row); a restrictive policy keeps the owner a host of their own list. Deleting a list removes its Storage photos first (the storage policy needs the list to exist).
-- **Privacy:** guests never see other guests' claims. Hosts see claim time, device type, a short device tag and a location rounded to ~1 km **only if the guest allowed it in the browser's permission prompt**, which appears when they tap "Sim, confirmo que levo" (there is no checkbox; see docs/design.md rule 6). Locations are purged 7 days after the party.
+- **Privacy:** guests never see other guests' claims. Hosts see claim time, device type and the guest's **6-digit guest code** (`guest_codes` table, migration `20260928120000_guest_codes.sql`): random, one per anonymous device, created by `my_guest_code()` when a list opens and by a trigger on every new claim; hosts read codes of their own guests through RLS. Guests see their code on their screens (`GuestCode.vue`). The app **no longer asks for location**; the old `lat_rounded`/`lng_rounded`/`area_label` columns stay (additive rule) and older builds may still fill them, which the purge job clears.
 - Schema changes go in a **new** migration file (`supabase/migrations/<timestamp>_<name>.sql`); never edit an applied migration.
 - **Migrations must be additive** (new tables, columns, functions; never rename or drop what the app uses). Open apps keep running the previous build until their next change of screen (`src/lib/updates.ts`), so the old code must keep working against the new database.
 - Photos go in the public bucket `gift-images` at `<list_id>/<uuid>.webp`, shrunk in the browser before upload (target ≤ 1200 px, WebP).
@@ -70,7 +70,8 @@ docs/design.md         visual identity + UX rules — read before touching UI
 | Host "Quem vai levar o quê" (claims + "Liberar") | ✅ first version, **untested against real data** |
 | Edit party details, co-host invites (migration `20260927120000_cohost_invites.sql`) | ✅ first version, **untested against real data** |
 | Host login: Google button hidden unless the provider is on | ✅ |
-| pg_cron location purge (ClaimsView promises it: schedule before launch) | ⏳ |
+| Guest codes instead of location (migration `20260928120000_guest_codes.sql`, applied by hand) | ✅ first version |
+| pg_cron location purge (only for locations saved before guest codes) | ⏳ optional |
 | Polish: page titles, WhatsApp preview text, share shortcut on phones, quieter guest refresh, release errors, `randomId()` for plain-http phones | ✅ |
 | PWA: manifest, icons, `public/sw.js` (network-first pages, cached `/assets/`), install card for hosts, home page reopens the last list | ✅ first version |
 

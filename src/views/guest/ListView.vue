@@ -6,6 +6,7 @@ import TileBand from '@/components/TileBand.vue'
 import GiftPhoto from '@/components/GiftPhoto.vue'
 import { useGuestStore } from '@/stores/guest'
 import { partyWhen } from '@/lib/format'
+import GuestCode from '@/components/GuestCode.vue'
 
 const route = useRoute()
 const store = useGuestStore()
@@ -47,6 +48,7 @@ function repeatNote(count: number) {
         <p class="muted">
           A festa é no <b class="ink">{{ partyWhen(store.list.event_at) }}</b>.
         </p>
+        <GuestCode :code="store.myCode" />
       </div>
 
       <RouterLink v-if="store.mine.length" class="strip" :to="{ name: 'guest-mine', params: { token } }">

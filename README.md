@@ -103,7 +103,7 @@ The repo deploys as a Cloudflare Worker that serves static files. `wrangler.json
 
 **Repeatable gifts:** `repeatable = true` with `max_claims = null` means unlimited; with a number it closes at that count. One-time gifts disappear from the list once claimed.
 
-**Privacy:** guests are anonymous. Hosts see claim time, device type, a short device tag and, only if the guest allowed the browser's location prompt (it appears when they confirm a gift), a location rounded to ~1 km. The hosts' screen turns that rounded location into a neighbourhood name ("Perto de Pinheiros, São Paulo") with OpenStreetMap's free Nominatim service, once per claim, and saves it as `area_label`; the cleanup job wipes it with the location.
+**Privacy:** guests are anonymous and the app doesn't ask for location. Each guest phone gets a random 6-digit code ("Seu código neste celular: 482 913") that the guest sees and the hosts see next to each claim, so a guest can say which gifts are theirs. Codes live in `guest_codes` (one per anonymous device); hosts can read only the codes of guests who claimed something in their lists.
 
 **Lost phone:** if a guest clears their browser, the app forgets what they claimed, but the claim stays. They ask the host, who can free the gift up.
 

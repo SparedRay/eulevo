@@ -3,12 +3,13 @@ import { ref, computed } from 'vue'
 import { ensureGuestSession } from '@/lib/supabase'
 import {
   fetchGuestList,
+  fetchMyGuestCode,
   claimGift,
   releaseClaim,
   type GuestList,
   type ClaimResult,
 } from '@/lib/api'
-import { deviceSummary, roughLocation } from '@/lib/device'
+import { deviceSummary } from '@/lib/device'
 import { rememberList } from '@/lib/lastList'
 import { watchList } from '@/lib/live'
 
@@ -18,6 +19,8 @@ export const useGuestStore = defineStore('guest', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const notFound = ref(false)
+  /** This phone's 6-digit code (see fetchMyGuestCode). Null until loaded, or if the database has no codes yet. */
+  const myCode = ref<string | null>(null)
 
   const list = computed(() => data.value?.list ?? null)
   const mine = computed(() => data.value?.mine ?? [])
@@ -41,12 +44,22 @@ export const useGuestStore = defineStore('guest', () => {
       data.value = res
       if (res) rememberList({ token: t, title: res.list.title })
       syncLive()
+      if (res && !myCode.value && !quiet) loadMyCode()
     } catch (e) {
       // A failed background refresh keeps what's on screen; the next one will try again.
       if (!quiet) error.value = 'Não conseguimos carregar a lista. Confira sua internet e tente de novo.'
       console.error(e)
     } finally {
       loading.value = false
+    }
+  }
+
+  /** Best effort: the list works without a code (e.g. before the guest_codes migration runs). */
+  async function loadMyCode() {
+    try {
+      myCode.value = await fetchMyGuestCode()
+    } catch (e) {
+      console.error(e)
     }
   }
 
@@ -77,17 +90,10 @@ export const useGuestStore = defineStore('guest', () => {
     setTimeout(syncLive)
   }
 
-  /**
-   * Claims a gift. The rough location (~1 km) is always requested: the browser's own
-   * permission prompt is the guest's choice, and a "no" or no answer still saves the claim.
-   */
+  /** Claims a gift. No location: the guest code identifies the phone. */
   async function claim(giftId: string): Promise<ClaimResult> {
-    const loc = await roughLocation()
-    const result = await claimGift(giftId, {
-      lat: loc?.lat,
-      lng: loc?.lng,
-      device: deviceSummary(),
-    })
+    const result = await claimGift(giftId, { device: deviceSummary() })
+    if (result === 'ok' && !myCode.value) loadMyCode()
     if (token.value) await load(token.value, { quiet: true })
     return result
   }
@@ -106,6 +112,7 @@ export const useGuestStore = defineStore('guest', () => {
     loading,
     error,
     notFound,
+    myCode,
     giftById,
     load,
     startLive,

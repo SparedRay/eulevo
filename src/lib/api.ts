@@ -74,6 +74,17 @@ export async function claimGift(
   return data as ClaimResult
 }
 
+/**
+ * This phone's 6-digit guest code ("482913"), created on first use. Guests read it out to the
+ * hosts, who see the same code next to each claim. Null if the database doesn't have codes yet.
+ */
+export async function fetchMyGuestCode(): Promise<string | null> {
+  if (MOCK) return (await mock()).myGuestCode()
+  const { data, error } = await supabase.rpc('my_guest_code')
+  if (error) throw error
+  return (data as string | null) ?? null
+}
+
 export async function releaseClaim(claimId: string): Promise<boolean> {
   if (MOCK) return (await mock()).releaseClaim(claimId)
   const { data, error } = await supabase.rpc('release_claim', { p_claim: claimId })
@@ -218,8 +229,10 @@ export interface HostClaim {
   repeatable: boolean
   claimed_at: string
   device_summary: string | null
-  /** First 4 characters of the guest's anonymous id: the same tag means the same phone. */
+  /** First 4 characters of the guest's anonymous id: fallback when there is no guest code. */
   device_tag: string
+  /** The guest's 6-digit code, the one they see on their own screens. Same code = same phone. */
+  guest_code: string | null
   lat: number | null
   lng: number | null
   area_label: string | null
@@ -237,6 +250,16 @@ export async function fetchHostClaims(listId: string): Promise<HostClaim[]> {
     .is('released_at', null)
     .order('claimed_at', { ascending: false })
   if (error) throw error
+
+  // Guest codes: best effort, so the screen still works if the guest_codes migration isn't there yet.
+  const codes = new Map<string, string>()
+  const deviceIds = [...new Set((data ?? []).map((c) => c.device_id as string))]
+  if (deviceIds.length) {
+    const res = await supabase.from('guest_codes').select('device_id, code').in('device_id', deviceIds)
+    if (res.error) console.error(res.error)
+    for (const r of res.data ?? []) codes.set(r.device_id, r.code)
+  }
+
   return (data ?? []).map((c) => {
     const gift = c.gifts as unknown as { title: string; repeatable: boolean } | null
     return {
@@ -247,6 +270,7 @@ export async function fetchHostClaims(listId: string): Promise<HostClaim[]> {
       claimed_at: c.claimed_at,
       device_summary: c.device_summary,
       device_tag: deviceTag(c.device_id),
+      guest_code: codes.get(c.device_id) ?? null,
       lat: c.lat_rounded === null ? null : Number(c.lat_rounded),
       lng: c.lng_rounded === null ? null : Number(c.lng_rounded),
       area_label: c.area_label,
