@@ -48,7 +48,6 @@ function repeatNote(count: number) {
         <p class="muted">
           A festa é no <b class="ink">{{ partyWhen(store.list.event_at) }}</b>.
         </p>
-        <GuestCode :code="store.myCode" />
       </div>
 
       <RouterLink v-if="store.mine.length" class="strip" :to="{ name: 'guest-mine', params: { token } }">
@@ -75,6 +74,8 @@ function repeatNote(count: number) {
           {{ gift.repeatable && gift.claim_count > 0 ? 'Quero levar também' : 'Quero levar este' }}
         </RouterLink>
       </article>
+
+      <GuestCode :code="store.myCode" />
     </template>
   </main>
 </template>

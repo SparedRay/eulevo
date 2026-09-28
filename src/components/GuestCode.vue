@@ -1,56 +1,49 @@
 <script setup lang="ts">
-// This phone's 6-digit guest code. Guests read it out to the hosts, who see the same code
-// next to each gift in "Quem vai levar o quê". It replaces names and location.
+// This phone's 6-digit guest code, shown only at the end of the guest list as a quiet help note.
+// It's for emergencies: the guest reads it out and the hosts find it in "Quem vai levar o quê".
 import { computed } from 'vue'
 import { formatCode } from '@/lib/format'
 
-const props = withDefaults(defineProps<{ code: string | null; variant?: 'line' | 'card' }>(), { variant: 'line' })
+const props = defineProps<{ code: string | null }>()
 const shown = computed(() => formatCode(props.code))
 </script>
 
 <template>
-  <p v-if="shown && variant === 'line'" class="code-line">
-    Seu código neste celular: <b class="digits">{{ shown }}</b>
-  </p>
-
-  <div v-else-if="shown" class="code-card">
-    <span class="label">Seu código neste celular</span>
-    <b class="digits big">{{ shown }}</b>
-    <span class="hint">Se precisar falar com os anfitriões sobre um presente, diga este código.</span>
-  </div>
+  <aside v-if="shown" class="code-help">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01" />
+    </svg>
+    <p>
+      <b>Algum problema com um presente?</b> Fale com os anfitriões e informe seu código:
+      <b class="digits">{{ shown }}</b>
+    </p>
+  </aside>
 </template>
 
 <style scoped>
-.code-line {
+.code-help {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1.5px dashed var(--input-line);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: var(--text-small);
+  line-height: 1.5;
   color: var(--muted);
 }
-.digits {
+.code-help svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.code-help b {
   color: var(--ink);
+}
+.digits {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
   white-space: nowrap;
-}
-.code-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 14px 16px;
-  border-radius: var(--radius);
-  background: var(--sky);
-  text-align: center;
-}
-.label {
-  font-size: var(--text-small);
-  font-weight: 700;
-  color: var(--muted);
-}
-.big {
-  font-size: 34px;
-  line-height: 1.1;
-}
-.hint {
-  font-size: var(--text-small);
-  color: var(--muted);
 }
 </style>
